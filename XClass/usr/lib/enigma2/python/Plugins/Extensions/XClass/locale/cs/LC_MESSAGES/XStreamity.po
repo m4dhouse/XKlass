@@ -1,0 +1,852 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"POT-Creation-Date: 2024-02-18 12:57+0000\n"
+"PO-Revision-Date: 2024-02-18 18:13+0100\n"
+"Last-Translator: Warder <ciksa@seznam.cz>\n"
+"Language-Team: \n"
+"Language: cs\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n>=2 && n<=4 ? 1 : 2);\n"
+"X-Generator: Poedit 3.4.2\n"
+"X-Poedit-Basepath: ../../..\n"
+"X-Poedit-SearchPath-0: .\n"
+
+#: Task.py:61 downloadmanager.py:47
+msgid "Waiting"
+msgstr "Čekám"
+
+#: Task.py:61 downloadmanager.py:46
+msgid "In progress"
+msgstr "Probíhá"
+
+#: Task.py:61
+msgid "Finished"
+msgstr "Dokončené"
+
+#: Task.py:61
+msgid "Failed"
+msgstr "Selhalo"
+
+#: Task.py:326
+#, python-format
+msgid ""
+"Error: %s\n"
+"Retry?"
+msgstr ""
+"Chyba: %s\n"
+"Zkusit ještě jednou?"
+
+#: Task.py:329
+msgid "Error"
+msgstr "Chyba"
+
+#: Task.py:376
+msgid "An unknown error occurred!"
+msgstr "Došlo k neznámé chybě!"
+
+#: Task.py:401
+#, python-format
+msgid "A required tool (%s) was not found."
+msgstr "Požadovaný nástroj (%s) nebyl nalezen."
+
+#: Task.py:409
+msgid "Cancelled upon user request"
+msgstr "Zrušeno na žádost uživatele"
+
+#: Task.py:426 Task.py:441
+msgid "Error code"
+msgstr "Kód chyby"
+
+#: catchup.py:136
+msgid "Catch Up Categories"
+msgstr "Catch Up kategorie"
+
+#: catchup.py:137 menu.py:239
+msgid "Catch Up TV"
+msgstr "Catch Up TV"
+
+#: catchup.py:179 catchup.py:445 catchup.py:652 catchup.py:654 catchup.py:666
+#: catchup.py:829 live.py:202 live.py:591 live.py:806 live.py:808 live.py:820
+#: live.py:1021 series.py:156 series.py:1225 series.py:1384 series.py:1387
+#: series.py:1390 series.py:1402 series.py:1618 series.py:1643 series.py:1659
+#: vod.py:134 vod.py:873 vod.py:1030 vod.py:1032 vod.py:1044 vod.py:1249
+msgid "Sort: A-Z"
+msgstr "Seřadit: A-Z"
+
+#: catchup.py:201 downloadmanager.py:165 live.py:234 mainmenu.py:44 menu.py:48
+#: playlists.py:54 playsettings.py:49 series.py:175 server.py:50 settings.py:66
+#: vod.py:153
+msgid "Back"
+msgstr "Zpět"
+
+#: catchup.py:202 live.py:235 mainmenu.py:45 menu.py:49 playlists.py:55
+#: series.py:176 vod.py:154
+msgid "OK"
+msgstr "OK"
+
+#: catchup.py:204 catchup.py:443 catchup.py:736 live.py:237 live.py:589
+#: live.py:920 series.py:178 series.py:1223 series.py:1512 vod.py:156
+#: vod.py:871 vod.py:1149
+msgid "Search"
+msgstr "Hledat"
+
+#: catchup.py:291 live.py:358 series.py:293 vod.py:271
+msgid "ALL"
+msgstr "VŠE"
+
+#: catchup.py:396 live.py:513 series.py:703 vod.py:410
+msgid "Server error or invalid link."
+msgstr "Chyba serveru nebo neplatný odkaz."
+
+#: catchup.py:403 catchup.py:433 catchup.py:699 catchup.py:729 live.py:547
+#: live.py:586 live.py:852 live.py:913 series.py:711 series.py:1220
+#: series.py:1458 series.py:1504 vod.py:417 vod.py:868 vod.py:1080 vod.py:1141
+msgid "Reset Search"
+msgstr "Obnovit vyhledávání"
+
+#: catchup.py:439 catchup.py:641
+msgid "Reverse"
+msgstr "Stornovat"
+
+#: catchup.py:488 catchup.py:514 live.py:639 live.py:675 series.py:792
+#: series.py:820 vod.py:505 vod.py:533
+msgid "Page: "
+msgstr "Stránka: "
+
+#: catchup.py:488 catchup.py:514 live.py:639 live.py:675 series.py:792
+#: series.py:820 vod.py:505 vod.py:533
+msgid " of "
+msgstr " z "
+
+#: catchup.py:652 catchup.py:654 catchup.py:669 live.py:806 live.py:808
+#: live.py:823 series.py:1384 series.py:1387 series.py:1390 series.py:1405
+#: vod.py:1030 vod.py:1032 vod.py:1047
+msgid "Sort: Z-A"
+msgstr "Řazení: Z-A"
+
+#: catchup.py:652 catchup.py:654 catchup.py:675 live.py:806 live.py:808
+#: live.py:829 series.py:1384 series.py:1387 series.py:1390 series.py:1428
+#: vod.py:1030 vod.py:1032 vod.py:1056
+msgid "Sort: Original"
+msgstr "Seřadit: Originál"
+
+#: catchup.py:654 catchup.py:672 live.py:808 live.py:826 series.py:1387
+#: series.py:1390 series.py:1408 vod.py:1032 vod.py:1050
+msgid "Sort: Added"
+msgstr "Seřadit: Přidáno"
+
+#: catchup.py:702 live.py:859 series.py:1462 vod.py:1087
+msgid "Filter this category..."
+msgstr "Filtrovat tuto kategorii..."
+
+#: catchup.py:722 live.py:906 series.py:1490 vod.py:1134
+msgid "No results found."
+msgstr "Nebyly nalezeny žádné výsledky."
+
+#: catchup.py:758 live.py:942 series.py:1548 vod.py:1171
+msgid "Incorrect pin code."
+msgstr "Nesprávný kód PIN."
+
+#: catchup.py:781 live.py:965 series.py:1571 vod.py:1194
+msgid "all"
+msgstr "vše"
+
+#: catchup.py:796 live.py:980 series.py:1586 vod.py:1209
+msgid "Please enter the parental control pin code"
+msgstr "Zadejte PIN kód rodičovské kontroly"
+
+#: catchup.py:796 hidden.py:27 live.py:980 series.py:1586 settings.py:25
+#: vod.py:1209
+msgid "Enter pin code"
+msgstr "Zadejte kód PIN"
+
+#: catchup.py:947
+msgid "Catch-up"
+msgstr "Catch-up"
+
+#: catchup.py:952 series.py:1837 vod.py:1484
+msgid "Added to download manager"
+msgstr "Přidáno do správce stahování"
+
+#: catchup.py:952 series.py:1837 vod.py:1484
+msgid "Note recording acts as an open connection."
+msgstr "Poznámka: Nahrávání funguje jako otevřené připojení."
+
+#: catchup.py:952 series.py:1837 vod.py:1484
+msgid "Do not record and play streams at the same time."
+msgstr "Nenahrávejte a nepřehrávejte streamy současně."
+
+#: catchup.py:952 series.py:1837 vod.py:1484
+msgid "Open download manager?"
+msgstr "Otevřít správce stahování?"
+
+#: catchup.py:955 series.py:1840 vod.py:1487
+msgid "Already added to download manager"
+msgstr "Již přidáno do správce stahování"
+
+#: catchup.py:986
+msgid "Catchup error. No data for this slot"
+msgstr "Chyba Catchupu. Žádná data pro tento slot"
+
+#: catchup.py:1026 catchup.py:1099
+msgid "Catchup currently not available. Missing EPG data"
+msgstr "Funkce Catchup momentálně není k dispozici. Chybějící data EPG"
+
+#: downloadmanager.py:45 downloadmanager.py:391 downloadmanager.py:427
+msgid "Not Started"
+msgstr "Nezahájeno"
+
+#: downloadmanager.py:153
+msgid "VOD Download Manager"
+msgstr "VOD Download Manager"
+
+#: downloadmanager.py:166 downloadmanager.py:395
+msgid "Download"
+msgstr "Stáhnout"
+
+#: downloadmanager.py:167 downloadmanager.py:396
+msgid "Remove"
+msgstr "Odstranit"
+
+#: downloadmanager.py:219
+msgid "Free Space:"
+msgstr "Volné místo:"
+
+#: downloadmanager.py:219
+msgid "of"
+msgstr "ze"
+
+#: downloadmanager.py:392 hidden.py:72
+msgid "Cancel"
+msgstr "Zrušit"
+
+#: downloadmanager.py:406
+msgid "Please set download folder in Main Settings."
+msgstr "Nastavte složku pro stahování v hlavním nastavení."
+
+#: downloadmanager.py:406
+msgid ""
+"Vod Download folder location does not exist.\n"
+"\n"
+msgstr ""
+"Umístění složky Vod Download neexistuje.\n"
+"\n"
+
+#: downloadmanager.py:446 downloadmanager.py:452
+msgid ""
+"Please update your wget library to download https lines\n"
+"\n"
+"opkg update\n"
+"opkg install wget"
+msgstr ""
+"Aktualizujte prosím svou knihovnu wget a stáhněte si řádky https\n"
+"\n"
+"Aktualizace OPKG\n"
+"opkg install wget"
+
+#: downloadmanager.py:473
+msgid "Cancel this download?"
+msgstr "Zrušit toto stahování?"
+
+#: downloadmanager.py:508
+msgid "Delete this entry?"
+msgstr "Odstranit tuto položku?"
+
+#: hidden.py:27 settings.py:25
+msgid "Please enter the correct pin code"
+msgstr "Zadejte správný PIN kód"
+
+#: hidden.py:36 settings.py:34
+msgid "The pin code you entered is wrong."
+msgstr "Zadaný kód PIN je nesprávný."
+
+#: hidden.py:63
+msgid "Hidden Categories"
+msgstr "Skryté kategorie"
+
+#: hidden.py:73 playsettings.py:50 record.py:40 server.py:51 settings.py:67
+msgid "Save"
+msgstr "Uložit"
+
+#: hidden.py:74
+msgid "Invert"
+msgstr "Převrácení"
+
+#: hidden.py:75
+msgid "Reset"
+msgstr "Resetovat"
+
+#: hidden.py:185
+msgid "Error: All categories hidden. Please amend your selection."
+msgstr "Chyba: Všechny kategorie jsou skryté. Upravte prosím svůj výběr."
+
+#: live.py:146
+msgid "Live Categories"
+msgstr "Živé kategorie"
+
+#: live.py:147 menu.py:213
+msgid "Live Streams"
+msgstr "Živé přenosy"
+
+#: live.py:354 vod.py:267
+msgid "FAVOURITES"
+msgstr "OBLÍBENÉ"
+
+#: live.py:356 vod.py:269
+msgid "RECENTLY WATCHED"
+msgstr "NEDÁVNO SLEDOVANÉ"
+
+#: live.py:601 live.py:855 playlists.py:56 vod.py:883 vod.py:1083
+msgid "Delete"
+msgstr "Smazat"
+
+#: live.py:1328 live.py:1387 live.py:1396
+msgid "Next Info"
+msgstr "Další informace"
+
+#: live.py:1391
+msgid "Now Info"
+msgstr "Nyní info"
+
+#: live.py:1623 streamplayer.py:678
+msgid "Recording Timer Set."
+msgstr "Nastaviť časovač nahrávání."
+
+#: live.py:1625 streamplayer.py:680
+msgid "Recording Failed."
+msgstr "Nahrávání se nezdařilo."
+
+#: mainmenu.py:42
+msgid "Main Menu"
+msgstr "Hlavní menu"
+
+#: mainmenu.py:46
+msgid "Reset JSON"
+msgstr "Resetovat JSON"
+
+#: mainmenu.py:78
+msgid "Playlists.txt location is invalid and has been reset."
+msgstr "Umístění souboru Playlists.txt je neplatné a bylo resetováno."
+
+#: mainmenu.py:121
+msgid "Playlists"
+msgstr "Playlisty"
+
+#: mainmenu.py:122 mainmenu.py:127
+msgid "Add Playlist"
+msgstr "Přidat Playlist"
+
+#: mainmenu.py:123 mainmenu.py:128 settings.py:59
+msgid "Main Settings"
+msgstr "Hlavní nastavení"
+
+#: mainmenu.py:124
+msgid "Manual EPG Update"
+msgstr "Ruční obnova EPG"
+
+#: mainmenu.py:131
+msgid "Download Manager"
+msgstr "Správce stahování"
+
+#: mainmenu.py:166
+msgid "Recordings in progress. EPG not downloaded."
+msgstr "Probíhající nahrávání. EPG není staženo."
+
+#: mainmenu.py:168
+msgid "EPGs downloading."
+msgstr "Stahování EPG."
+
+#: mainmenu.py:205
+msgid ""
+"Warning: delete stored json data for all playlists... Settings, favourites "
+"etc. \n"
+"Playlists will not be deleted.\n"
+"Do you wish to continue?"
+msgstr ""
+"Upozornění: smazat uložená data JSON pro všechny seznamy skladeb ... "
+"Nastavení, oblíbené položky atd. \n"
+"Seznamy skladeb nebudou smazány.\n"
+"Chcete pokračovat?"
+
+#: menu.py:218 vod.py:86
+msgid "Vod"
+msgstr "Vod"
+
+#: menu.py:223
+msgid "TV Series"
+msgstr "TV seriály"
+
+#: menu.py:242 playsettings.py:42
+msgid "Playlist Settings"
+msgstr "Playlist nastavení"
+
+#: menu.py:251
+msgid "No data, blocked or playlist not compatible with XClass plugin."
+msgstr ""
+"Žádná data, blokované nebo playlist není kompatibilní s pluginem XClass."
+
+#: playlists.py:52
+msgid "Select Playlist"
+msgstr "Vybrat Playlist"
+
+#: playlists.py:57
+msgid "Info"
+msgstr "Informace"
+
+#: playlists.py:298 playlists.py:379
+msgid "Server Not Responding"
+msgstr "Server nereaguje"
+
+#: playlists.py:310 playlists.py:381
+msgid "Not Authorised"
+msgstr "Nepovoleno"
+
+#: playlists.py:315 playlists.py:323 playlists.py:367 serverinfo.py:71
+msgid "Active"
+msgstr "Aktivní"
+
+#: playlists.py:317 playlists.py:373 serverinfo.py:73
+msgid "Banned"
+msgstr "Zablokován"
+
+#: playlists.py:319 playlists.py:377 serverinfo.py:75
+msgid "Disabled"
+msgstr "Vypnuto"
+
+#: playlists.py:321 playlists.py:375 serverinfo.py:77
+msgid "Expired"
+msgstr "Expirovaný"
+
+#: playlists.py:326 playlists.py:328
+msgid "Expires: "
+msgstr "Vyprší: "
+
+#: playlists.py:330
+msgid "Active Conn:"
+msgstr "Aktivní Conn:"
+
+#: playlists.py:343
+msgid "Max Conn:"
+msgstr "Max Conn:"
+
+#: playlists.py:360
+msgid ""
+"You have dead playlists that are slowing down loading.\n"
+"\n"
+"Press Yellow button to soft delete dead playlists"
+msgstr ""
+"Máte mrtvé seznamy skladeb, které zpomalují načítání.\n"
+"\n"
+"Stiskněte žluté tlačítko pro jemné odstranění mrtvých seznamů skladeb"
+
+#: playlists.py:394
+msgid "Delete selected playlist?"
+msgstr "Smazat vybraný seznam skladeb?"
+
+#: playlists.py:415
+msgid "Delete providers EPG data?"
+msgstr "Smazat data EPG poskytovatelů?"
+
+#: playsettings.py:81 record.py:73 server.py:79 settings.py:99
+msgid "Really close without saving settings?"
+msgstr "Opravdu zavřít bez uložení nastavení?"
+
+#: playsettings.py:139 server.py:107
+msgid "Short name or provider name:"
+msgstr "Krátký název nebo název poskytovatele:"
+
+#: playsettings.py:141
+msgid "Show LIVE category:"
+msgstr "Zobraziť ŽIVÉ kategorii:"
+
+#: playsettings.py:142
+msgid "Show VOD category:"
+msgstr "Zobraziť VOD kategorii:"
+
+#: playsettings.py:143
+msgid "Show SERIES category:"
+msgstr "Zobraziť SERIÁLY kategorii:"
+
+#: playsettings.py:144
+msgid "Show CATCHUP category:"
+msgstr "Zobraziť CATCHUP kategorii:"
+
+#: playsettings.py:145 server.py:113
+msgid "Output:"
+msgstr "Výstup:"
+
+#: playsettings.py:148
+msgid "Stream Type LIVE:"
+msgstr "Typ streamu LIVE:"
+
+#: playsettings.py:151
+msgid "Stream Type VOD/SERIES:"
+msgstr "Typ streamu VOD/SERIES:"
+
+#: playsettings.py:153
+msgid "Stream Source URL:"
+msgstr "Adresa URL zdroje Streamu:"
+
+#: playsettings.py:155
+msgid "EPG offset:"
+msgstr "Ofset EPG:"
+
+#: playsettings.py:156
+msgid "Use alternative EPG url:"
+msgstr "Použijte alternativní adresu URL EPG:"
+
+#: playsettings.py:158
+msgid "Alternative EPG url:"
+msgstr "Alternativní adresa URL EPG:"
+
+#: playsettings.py:237
+msgid ""
+"Bouquet name cannot be blank. Please enter a unique bouquet name. Minimum 3 "
+"characters."
+msgstr ""
+"Název kytice nesmí být prázdný. Zadejte prosím jedinečný název kytice. "
+"Minimálně 3 znaky."
+
+#: playsettings.py:245 server.py:210
+msgid "Name already used. Please enter a unique name."
+msgstr "Již použitý název. Zadejte prosím jedinečný název."
+
+#: plugin.py:260 plugin.py:381
+msgid "XClass"
+msgstr "XClass"
+
+#: plugin.py:380
+msgid "IPTV Xtream Codes playlists player by KiddaC"
+msgstr "IPTV Xtream kódy playlisty KiddaC"
+
+#: record.py:39 serverinfo.py:60
+msgid "Close"
+msgstr "Zavřít"
+
+#: record.py:53
+msgid "Please enter recording time"
+msgstr "Zadejte prosím čas nahrávání"
+
+#: record.py:56
+msgid "Please enter recording end time"
+msgstr "Zadejte prosím koncový čas nahrávání"
+
+#: record.py:93
+msgid "Name"
+msgstr "Jméno"
+
+#: record.py:95
+msgid "Start Time"
+msgstr "Čas zahájení"
+
+#: record.py:97
+msgid "End Time"
+msgstr "Čas konce"
+
+#: series.py:85
+msgid "Series Categories"
+msgstr "Kategorie sérií"
+
+#: series.py:86 series.py:1832
+msgid "Series"
+msgstr "Série"
+
+#: series.py:415
+msgid "No series found in this category."
+msgstr "V této kategorii nebyly nalezeny žádné série."
+
+#: series.py:1390 series.py:1418 vod.py:1032 vod.py:1053
+msgid "Sort: Year"
+msgstr "Seřadit: Rok"
+
+#: series.py:1799 vod.py:1447
+msgid "Video Type:"
+msgstr "Typ videa:"
+
+#: series.py:1800 vod.py:1448
+msgid "Rating:"
+msgstr "Hodnocení:"
+
+#: series.py:1801 vod.py:1449
+msgid "Genre:"
+msgstr "Žánr:"
+
+#: series.py:1802 vod.py:1450
+msgid "Duration:"
+msgstr "Doba trvání:"
+
+#: series.py:1803 vod.py:1451
+msgid "Release Date:"
+msgstr "Datum vydání:"
+
+#: series.py:1804 vod.py:1452
+msgid "Cast:"
+msgstr "Obsazení:"
+
+#: series.py:1805 vod.py:1453
+msgid "Director:"
+msgstr "Režisér:"
+
+#: series.py:1806 vod.py:1454
+msgid "Country:"
+msgstr "Země:"
+
+#: series.py:1876
+msgid "Season "
+msgstr "Sezóna "
+
+#: server.py:43
+msgid "Add Xtream Codes Playlist"
+msgstr "Přidat seznam skladeb Xtream Codes"
+
+#: server.py:108
+msgid "Protocol:"
+msgstr "Protokol:"
+
+#: server.py:109
+msgid "Server URL: i.e. domain.xyz"
+msgstr "Adresa URL serveru: tj. domain.xyz"
+
+#: server.py:110
+msgid "Port:"
+msgstr "Přístav:"
+
+#: server.py:111
+msgid "Username:"
+msgstr "Uživatelské jméno:"
+
+#: server.py:112
+msgid "Password:"
+msgstr "Heslo:"
+
+#: server.py:197
+msgid "Details are not valid or unauthorised"
+msgstr "Údaje jsou neplatné nebo neoprávněné"
+
+#: server.py:202
+msgid ""
+"Bouquet name cannot be blank. Please enter a unique bouquet name. Minimum 2 "
+"characters."
+msgstr ""
+"Název kytice nesmí být prázdný. Zadejte prosím jedinečný název kytice. "
+"Minimálně 2 znaky."
+
+#: server.py:227
+msgid "Playlist added successfully."
+msgstr "Seznam skladeb byl úspěšně přidán."
+
+#: serverinfo.py:30
+msgid "User Information"
+msgstr "Informace o uživateli"
+
+#: serverinfo.py:43
+msgid "Status:"
+msgstr "Stav:"
+
+#: serverinfo.py:44
+msgid "Expiry Date:"
+msgstr "Platnost do:"
+
+#: serverinfo.py:45
+msgid "Created At:"
+msgstr "Vytvořeno v:"
+
+#: serverinfo.py:46
+msgid "Is Trial:"
+msgstr "Je zkouška:"
+
+#: serverinfo.py:47
+msgid "Active Connections:"
+msgstr "Aktivní připojení:"
+
+#: serverinfo.py:48
+msgid "Max Connections:"
+msgstr "Max připojení:"
+
+#: serverinfo.py:49
+msgid "Allowed Output Formats:"
+msgstr "Povolené výstupní formáty:"
+
+#: serverinfo.py:50
+msgid "Real URL:"
+msgstr "Skutečná adresa URL:"
+
+#: serverinfo.py:51
+msgid "Timezone:"
+msgstr "Časová zóna:"
+
+#: serverinfo.py:52
+msgid "Server Offset:"
+msgstr "Offset serveru:"
+
+#: settings.py:111
+msgid ""
+"Please change default parental pin.\n"
+"\n"
+"Pin cannot be 0000, 1111 or 1234"
+msgstr ""
+"Změňte výchozí rodičovský kód PIN.\n"
+"\n"
+"Pin nemůže být 0000, 1111 nebo 1234"
+
+#: settings.py:127
+msgid "You need to restart the GUI"
+msgstr "Musíte restartovat GUI"
+
+#: settings.py:127
+msgid "Do you want to restart now?"
+msgstr "Chcete nyní restartovat?"
+
+#: settings.py:138
+msgid "Select skin"
+msgstr "Vybrat vzhled"
+
+#: settings.py:139
+msgid "playlists.txt location"
+msgstr "playlists.txt umístění"
+
+#: settings.py:139 settings.py:151 settings.py:163 settings.py:164
+#: settings.py:171
+msgid " *Restart GUI Required"
+msgstr " *Vyžadováno restartování GUI"
+
+#: settings.py:140
+msgid "EPG download location"
+msgstr "Složka pro stažení EPG"
+
+#: settings.py:141
+msgid "VOD download folder"
+msgstr "Složka pro stažení VOD"
+
+#: settings.py:144
+msgid "Default LIVE stream type"
+msgstr "Výchozí typ živého přenosu"
+
+#: settings.py:145
+msgid "Default VOD/SERIES stream type"
+msgstr "Výchozí typ streamu VOD/SERIES"
+
+#: settings.py:147
+msgid "Preview LIVE streams in mini tv"
+msgstr "Náhled LIVE přenosů v mini tv"
+
+#: settings.py:148
+msgid "Stop stream on back button"
+msgstr "Zastaviť stream po stlačený tlačítka Zpět"
+
+#: settings.py:149
+msgid "XClass parental control"
+msgstr "XClass rodičovská kontrola"
+
+#: settings.py:150
+msgid "XClass parental pin"
+msgstr "XClass rodičovský pin"
+
+#: settings.py:151
+msgid "Show in main menu"
+msgstr "Zobrazit v hlavní nabídce"
+
+#: settings.py:153
+msgid "Use Movie Database(TMDB) for VOD & Series"
+msgstr "Použijte filmovou databázi (TMDB) pro VOD a Seriály"
+
+#: settings.py:154
+msgid "Movie Database language"
+msgstr "Jazyk databáze filmů"
+
+#: settings.py:156
+msgid "Margin before catchup (mins)"
+msgstr "Rozpětí před doháněním (min)"
+
+#: settings.py:157
+msgid "Margin after catchup (mins)"
+msgstr "Rozpětí po dohánění (min)"
+
+#: settings.py:159
+msgid "Allow SubsSupport plugin in VOD"
+msgstr "Povolit plugin SubsSupport ve VOD"
+
+#: settings.py:161
+msgid "Skip playlist selection screen if only 1 playlist"
+msgstr ""
+"Přeskočit obrazovku výběru seznamu skladeb, pokud je pouze 1 seznam skladeb"
+
+#: settings.py:163
+msgid "Download EPG on boot"
+msgstr "Stažení EPG při spuštění systému"
+
+#: settings.py:164
+msgid "Automatic EPG download time"
+msgstr "Čas automatického stahování EPG"
+
+#: settings.py:166
+msgid "Show channel picons"
+msgstr "Zobrazit picony kanálů"
+
+#: settings.py:167
+msgid "Show Vod/Series posters"
+msgstr "Zobrazit plakáty Vod/seriálů"
+
+#: settings.py:168
+msgid "Show infobar picons"
+msgstr "Zobrazit picony na infobaru"
+
+#: settings.py:169
+msgid "Show infobar posters"
+msgstr "Zobrazit plakáty na informačním panelu"
+
+#: settings.py:171
+msgid "Auto start XClass on boot"
+msgstr "Automatické spuštění XClass při startu systému"
+
+#: settings.py:299 settings.py:314 settings.py:329
+msgid "Choose Directory:"
+msgstr "Vyberte adresář:"
+
+#: settings.py:300 settings.py:315 settings.py:330
+msgid "Choose directory"
+msgstr "Vyberte adresář"
+
+#: streamplayer.py:463
+msgid "TV"
+msgstr "TV"
+
+#: streamplayer.py:992 streamplayer.py:1411 streamplayer.py:1659
+msgid "Resolution Change Failed"
+msgstr "Změna rozlišení neúspěšná"
+
+#: streamplayer.py:1047
+msgid "Do you want to resume this playback?"
+msgstr "Chcete pokračovat v tomto přehrávání?"
+
+#: streamplayer.py:1047
+#, python-format
+msgid "Resume position at %s"
+msgstr "Resume position at %s"
+
+#: streamplayer.py:1146
+msgid "VOD"
+msgstr "VOD"
+
+#: streamplayer.py:1493
+msgid "Catch Up"
+msgstr "Catch Up"
+
+#: vod.py:85
+msgid "Vod Categories"
+msgstr "Vod kategorie"
+
+#: vod.py:1479
+msgid "Movie"
+msgstr "Film"
+
+#: vod.py:1512
+msgid ""
+"The IMDb plugin is not installed!\n"
+"Please install it."
+msgstr ""
+"IMDb plugin není nainstalován!\n"
+"Prosím, nainstalujte jej."
