@@ -243,12 +243,6 @@ def mainmenu(menu_id, **kwargs):
         return []
 
 
-def extensionsmenu(session, **kwargs):
-    from . import mainmenu
-    session.open(mainmenu.XClass_MainMenu)
-    return
-
-
 autoStartTimer = None
 
 
@@ -363,7 +357,7 @@ def Plugins(**kwargs):
 
     main_menu = PluginDescriptor(name=pluginname, description=description, where=PluginDescriptor.WHERE_MENU, fnc=mainmenu, needsRestart=True)
 
-    extensions_menu = PluginDescriptor(name=pluginname, description=description, where=PluginDescriptor.WHERE_EXTENSIONSMENU, fnc=extensionsmenu, needsRestart=True)
+    extensions_menu = PluginDescriptor(name=pluginname, description=description, where=PluginDescriptor.WHERE_EXTENSIONSMENU, fnc=main, needsRestart=True)
 
     # boot_start = PluginDescriptor(name=pluginname, description=description, where=[PluginDescriptor.WHERE_AUTOSTART, PluginDescriptor.WHERE_SESSIONSTART], fnc=bootstart, needsRestart=True)
 
