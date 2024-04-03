@@ -3,7 +3,7 @@
 
 from . import _
 
-from Components.config import config, ConfigSubsection, ConfigSelection, ConfigDirectory, ConfigYesNo, ConfigSelectionNumber, ConfigClock, ConfigPIN, ConfigInteger
+from Components.config import config, ConfigSubsection, ConfigSelection, ConfigDirectory, ConfigYesNo, ConfigSelectionNumber, ConfigClock, ConfigPIN, ConfigInteger, ConfigText
 from enigma import eTimer, getDesktop, addFont
 from Plugins.Plugin import PluginDescriptor
 from os.path import isdir
@@ -158,8 +158,6 @@ cfg.infobarcovers = ConfigYesNo(default=True)
 
 cfg.boot = ConfigYesNo(default=False)
 cfg.defaultplaylist = ConfigText()
-cfg.lastplayed = ConfigText()
-cfg.lastcategory = ConfigText()
 
 skin_path = os.path.join(skin_directory, cfg.skin.value)
 common_path = os.path.join(skin_directory, "common/")
@@ -200,18 +198,6 @@ if not os.path.exists(dir_tmp):
 if not os.path.isfile(playlist_file):
     with open(playlist_file, "a") as f:
         f.close()
-
-if os.stat(playlist_file).st_size == 0:
-    try:
-        shutil.copyfile('/home/playlists.txt', playlist_file)
-    except:
-        pass
-
-else:
-    try:
-        shutil.copyfile(playlist_file, '/home/playlists.txt')
-    except:
-        pass
 
 # check if x-playlists.json file exists in specified location
 if not os.path.isfile(playlists_json):
