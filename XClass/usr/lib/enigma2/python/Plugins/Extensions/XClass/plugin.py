@@ -158,6 +158,7 @@ cfg.infobarcovers = ConfigYesNo(default=True)
 
 cfg.boot = ConfigYesNo(default=False)
 cfg.defaultplaylist = ConfigText()
+cfg.lastcategory = ConfigText()
 
 skin_path = os.path.join(skin_directory, cfg.skin.value)
 common_path = os.path.join(skin_directory, "common/")
