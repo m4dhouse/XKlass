@@ -157,8 +157,9 @@ cfg.channelcovers = ConfigYesNo(default=True)
 cfg.infobarcovers = ConfigYesNo(default=True)
 
 cfg.boot = ConfigYesNo(default=False)
-cfg.defaultplaylist = ""
-cfg.lastplayed = ""
+cfg.defaultplaylist = ConfigText()
+cfg.lastplayed = ConfigText()
+cfg.lastcategory = ConfigText()
 
 skin_path = os.path.join(skin_directory, cfg.skin.value)
 common_path = os.path.join(skin_directory, "common/")
