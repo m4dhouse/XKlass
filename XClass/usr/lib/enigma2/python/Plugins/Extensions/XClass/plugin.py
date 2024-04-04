@@ -226,7 +226,7 @@ def main(session, **kwargs):
 
 def mainmenu(menu_id, **kwargs):
     if menu_id == "mainmenu":
-        return [(_("XClass"), main, "XClass", 50)]
+        return [(_("XClass"), main, "XClass", 0)]
     else:
         return []
 
@@ -336,6 +336,7 @@ def Plugins(**kwargs):
     addFont(os.path.join(font_folder, "m-plus-rounded-1c-medium.ttf"), "xclassbold", 100, 0)
     addFont(os.path.join(font_folder, "slyk-medium.ttf"), "slykregular", 100, 0)
     addFont(os.path.join(font_folder, "slyk-bold.ttf"), "slykbold", 100, 0)
+    addFont(os.path.join(font_folder, "classfont.ttf"), "class", 100, 0)
 
     iconFile = "icons/plugin-icon_sd.png"
     if screenwidth.width() > 1280:
