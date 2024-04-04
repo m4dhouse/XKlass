@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from . import _
-from . import streamplayer
 from . import xclass_globals as glob
 
 from .plugin import skin_directory, screenwidth, hdr, cfg, common_path, dir_tmp, playlists_json, pythonVer
@@ -25,6 +24,7 @@ from enigma import eTimer, eServiceReference, eEPGCache
 from requests.adapters import HTTPAdapter, Retry
 from twisted.web.client import downloadPage
 from itertools import cycle, islice
+
 try:
     from xml.dom import minidom
 except:
@@ -133,6 +133,7 @@ class XClass_Categories(Screen):
         # print("*** init ***")
         Screen.__init__(self, session)
         self.session = session
+        glob.session = session
         glob.categoryname = "live"
 
         self.skin_path = os.path.join(skin_directory, cfg.skin.getValue())
@@ -252,7 +253,7 @@ class XClass_Categories(Screen):
             "channelUp": self.pageUp,
             "channelDown": self.pageDown,
             "0": self.reset,
-            "menu": self.showHiddenList,
+            "menu": self.showPopupMenu,
         }, -1)
 
         self["channel_actions"] = ActionMap(["XClassActions"], {
@@ -279,7 +280,7 @@ class XClass_Categories(Screen):
             "tv": self.favourite,
             "stop": self.favourite,
             "0": self.reset,
-            "menu": self.showHiddenList,
+            "menu": self.showPopupMenu,
             "7": self.epgminus,
             "8": self.epgreset,
             "9": self.epgplus,
@@ -287,6 +288,18 @@ class XClass_Categories(Screen):
 
         self["channel_actions"].setEnabled(False)
 
+        self['dialogactions'] = ActionMap(['XClassActions'], {
+            "red": self.d_quit,
+            "cancel": self.d_quit,
+            "green": self.d_next,
+            "ok": self.d_next,
+            "up": self.d_up,
+            "down": self.d_down,
+        }, -1)
+
+        self["dialogactions"].setEnabled(False)
+
+        glob.channelMenuDialog = None
         glob.nextlist = []
         glob.nextlist.append({"next_url": next_url, "index": 0, "level": self.level, "sort": self.sortText, "filter": ""})
 
@@ -987,6 +1000,7 @@ class XClass_Categories(Screen):
 
     def next(self):
         # print("*** next ***")
+        from . import streamplayer
         if self["main_list"].getCurrent():
 
             currentindex = self["main_list"].getIndex()
@@ -1783,6 +1797,45 @@ class XClass_Categories(Screen):
     def epgreset(self):
         self.epgtimeshift = 0
         self.addEPG()
+
+    def showChoiceBoxDialog(self):
+        self["dialogactions"].setEnabled(True)
+        self["channel_actions"].setEnabled(False)
+        self["category_actions"].setEnabled(False)
+
+        instance = self["main_list"].master.master.instance
+        instance.allowNativeKeys(False)
+        glob.ChoiceBoxDialog.show()
+
+    def closeChoiceBoxDialog(self):
+        print("*** close dialog ***")
+        self["dialogactions"].setEnabled(False)
+        print("*** glob.ChoiceBoxDialog ***", glob.ChoiceBoxDialog.reload)
+        self.session.deleteDialog(glob.ChoiceBoxDialog)
+        if self.level == 1:
+            self["category_actions"].setEnabled(True)
+        if self.level == 2:
+            self["channel_actions"].setEnabled(True)
+        instance = self["main_list"].master.master.instance
+        instance.allowNativeKeys(True)
+
+    def showPopupMenu(self):
+        from . import channelmenu
+        glob.ChoiceBoxDialog = self.session.instantiateDialog(channelmenu.XClass_ChannelMenu)
+        self.showChoiceBoxDialog()
+
+    def d_quit(self):
+        self.closeChoiceBoxDialog()
+
+    def d_next(self):
+        glob.ChoiceBoxDialog.__next__()
+        glob.ChoiceBoxDialog.hide()
+
+    def d_up(self):
+        glob.ChoiceBoxDialog.keyUp()
+
+    def d_down(self):
+        glob.ChoiceBoxDialog.keyDown()
 
 
 def buildEPGListEntry(index, title, epgNowTime, epgNowTitle, epgNowDesc, epgNextTime, epgNextTitle, epgNextDesc, hidden, direct_source):

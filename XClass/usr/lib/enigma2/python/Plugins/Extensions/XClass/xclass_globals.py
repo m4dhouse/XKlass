@@ -17,3 +17,5 @@ currentDownloadTotalBytes = 0
 pintime = 0
 adultChannel = False
 categoryname = None
+ChoiceBoxDialog = None
+session = None
