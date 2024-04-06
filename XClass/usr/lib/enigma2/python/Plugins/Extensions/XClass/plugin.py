@@ -1,24 +1,22 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from . import _
-
-from Components.config import config, ConfigSubsection, ConfigSelection, ConfigDirectory, ConfigYesNo, ConfigSelectionNumber, ConfigClock, ConfigPIN, ConfigInteger, ConfigText
-from enigma import eTimer, getDesktop, addFont
-from Plugins.Plugin import PluginDescriptor
-from os.path import isdir
-# from datetime import datetime
-
 import os
 import shutil
 import sys
 import time
 import twisted.python.runtime
 
+from . import _
+from Components.config import config, ConfigSubsection, ConfigSelection, ConfigDirectory, ConfigYesNo, ConfigSelectionNumber, ConfigClock, ConfigPIN, ConfigInteger, ConfigText
+from enigma import eTimer, getDesktop, addFont
+from Plugins.Plugin import PluginDescriptor
+from os.path import isdir
+
 try:
     from multiprocessing.pool import ThreadPool
     hasMultiprocessing = True
-except:
+except ImportError:
     hasMultiprocessing = False
 
 try:
@@ -27,15 +25,13 @@ try:
         hasConcurrent = True
     else:
         hasConcurrent = False
-except:
+except ImportError:
     hasConcurrent = False
 
 pythonFull = float(str(sys.version_info.major) + "." + str(sys.version_info.minor))
 pythonVer = sys.version_info.major
 
-isDreambox = False
-if os.path.exists("/usr/bin/apt-get"):
-    isDreambox = True
+isDreambox = os.path.exists("/usr/bin/apt-get")
 
 with open("/usr/lib/enigma2/python/Plugins/Extensions/XClass/version.txt", "r") as f:
     version = f.readline()
@@ -53,9 +49,7 @@ elif screenwidth.width() > 1280:
 else:
     skin_directory = os.path.join(dir_plugins, "skin/hd/")
 
-folders = os.listdir(skin_directory)
-if "common" in folders:
-    folders.remove("common")
+folders = [folder for folder in os.listdir(skin_directory) if folder != "common"]
 
 languages = [
     ("", "English"),
@@ -85,11 +79,6 @@ languages = [
     ("sq-AL", "shqip")
 ]
 
-"""
-def convert(unix=0):
-    return datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S')
-    """
-
 
 def defaultMoviePath():
     result = config.usage.default_path.value
@@ -106,9 +95,9 @@ if not isdir(config.movielist.last_videodir.value):
     except:
         pass
 
+# Configurations initialization
 config.plugins.XClass = ConfigSubsection()
 cfg = config.plugins.XClass
-
 
 live_streamtype_choices = [("1", "DVB(1)"), ("4097", "IPTV(4097)")]
 vod_streamtype_choices = [("4097", "IPTV(4097)")]
@@ -160,11 +149,14 @@ cfg.boot = ConfigYesNo(default=False)
 cfg.defaultplaylist = ConfigText()
 cfg.lastcategory = ConfigText()
 
-skin_path = os.path.join(skin_directory, cfg.skin.value)
-common_path = os.path.join(skin_directory, "common/")
+# Set default file paths
+playlist_file = os.path.join(dir_etc, "playlists.txt")
 playlists_json = os.path.join(dir_etc, "x-playlists.json")
 downloads_json = os.path.join(dir_etc, "downloads2.json")
-playlist_file = os.path.join(dir_etc, "playlists.txt")
+
+# Set skin and font paths
+skin_path = os.path.join(skin_directory, cfg.skin.value)
+common_path = os.path.join(skin_directory, "common/")
 
 location = cfg.location.getValue()
 if location:
@@ -179,9 +171,9 @@ if location:
 
 font_folder = os.path.join(dir_plugins, "fonts/")
 
-hdr = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'}
-
-# hdr = {"User-Agent": "Enigma2 - XClass Plugin"}
+hdr = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
+}
 
 # create folder for working files
 if not os.path.exists(dir_etc):
