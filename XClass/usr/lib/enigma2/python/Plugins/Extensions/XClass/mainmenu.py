@@ -102,7 +102,7 @@ class XClass_MainMenu(Screen):
             self.start()
 
     def start(self, answer=None):
-        self.playlists_all = loadfiles.processfiles()
+        self.playlists_all = loadfiles.process_files()
         self.createSetup()
 
     def createSetup(self):

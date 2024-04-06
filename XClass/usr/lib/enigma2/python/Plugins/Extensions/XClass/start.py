@@ -29,7 +29,7 @@ class XClass_Start(Screen):
         Screen.__init__(self, session)
         self.session = session
 
-        self.playlists_all = loadfiles.processfiles()
+        self.playlists_all = loadfiles.process_files()
 
         self.defaultplaylist = cfg.defaultplaylist.getValue()
         self.lastcategory = cfg.lastcategory.getValue()
