@@ -161,13 +161,13 @@ class XClass_ChannelMenu(Screen):
         pass
 
     def userInfo(self):
-        """
+
         from . import serverinfo
         if "user_info" in glob.current_playlist:
             if "auth" in glob.current_playlist["user_info"]:
                 if glob.current_playlist["user_info"]["auth"] == 1:
                     self.session.open(serverinfo.XClass_UserInfo)
-                    """
+
 
     def defaultPlaylist():
         pass
