@@ -4,9 +4,8 @@
 from . import _
 from . import xclass_globals as glob
 from . import processfiles as loadfiles
-from .plugin import skin_directory, common_path, version, downloads_json, pythonFull, playlists_json, playlist_file, cfg
+from .plugin import skin_directory, common_path, version, downloads_json, playlists_json, playlist_file, cfg
 from .xStaticText import StaticText
-
 from Components.ActionMap import ActionMap
 from Components.Sources.List import List
 from enigma import eServiceReference
@@ -18,6 +17,7 @@ from Tools.LoadPixmap import LoadPixmap
 import json
 import os
 import shutil
+import sys
 
 
 class XClass_MainMenu(Screen):
@@ -70,38 +70,54 @@ class XClass_MainMenu(Screen):
     def __layoutFinished(self):
         self.setTitle(self.setup_title)
 
-    def check_dependencies(self):
-
-        try:
-            if cfg.locationvalid.getValue() is False:
-                self.session.open(MessageBox, _("Playlists.txt location is invalid and has been reset."), type=MessageBox.TYPE_INFO, timeout=5)
-                cfg.locationvalid.setValue(True)
-                cfg.save()
-        except:
-            pass
-
-        dependencies = True
-
+    def check_python_dependencies(self):
         try:
             import requests
             from PIL import Image
-            print("***** python version *** %s" % pythonFull)
-            if pythonFull < 3.9:
-                print("*** checking multiprocessing ***")
+            if sys.version_info < (3, 9):
                 from multiprocessing.pool import ThreadPool
+            return True
         except Exception as e:
-            print("**** missing dependencies ***")
-            print(e)
-            dependencies = False
+            print("Failed to import dependencies:", e)
+            return False
 
-        if dependencies is False:
-            os.chmod("/usr/lib/enigma2/python/Plugins/Extensions/XClass/dependencies.sh", 0o0755)
-            cmd1 = ". /usr/lib/enigma2/python/Plugins/Extensions/XClass/dependencies.sh"
-            self.session.openWithCallback(self.start, Console, title="Checking Python Dependencies", cmdlist=[cmd1], closeOnSuccess=False)
+    def check_dependencies(self):
+        try:
+            if not cfg.locationvalid.getValue():
+                print("Playlists.txt location is invalid and has been reset.")
+                self.session.open(MessageBox, _("Playlists.txt location is invalid and has been reset."), type=MessageBox.TYPE_INFO, timeout=5)
+                cfg.locationvalid.setValue(True)
+                cfg.save()
+        except Exception as e:
+            print("Error checking location validity:", e)
+
+        dependencies = True
+
+        dependencies = self.check_python_dependencies()
+
+        if not dependencies:
+            print("Installing dependencies...")
+            script_file = os.path.join(os.path.dirname(__file__), "dependencies.sh")
+            try:
+                os.chmod(script_file, 0o755)
+            except Exception as e:
+                print(e)
+
+            cmd = ". {}".format(script_file)
+
+            self.session.openWithCallback(self.retry_check_dependencies, Console, title="Checking Python Dependencies", cmdlist=[cmd], closeOnSuccess=True)
         else:
             self.start()
 
-    def start(self, answer=None):
+    def retry_check_dependencies(self):
+        dependencies = self.check_python_dependencies()
+
+        if not dependencies:
+            self.session.openWithCallback(self.close, MessageBox, _("Dependencies not installed.\n\nTrying installing older version from feeds first..."), type=MessageBox.TYPE_INFO, timeout=10)
+        else:
+            self.start()
+
+    def start(self):
         self.playlists_all = loadfiles.process_files()
         self.createSetup()
 
@@ -135,19 +151,19 @@ class XClass_MainMenu(Screen):
 
     def playlists(self):
         from . import playlists
-        self.session.openWithCallback(self.start, playlists.XClass_Playlists)
+        self.session.openWithCallback(lambda: self.start, playlists.XClass_Playlists)
 
     def settings(self):
         from . import settings
-        self.session.openWithCallback(self.start, settings.XClass_Settings)
+        self.session.openWithCallback(lambda: self.start, settings.XClass_Settings)
 
     def addServer(self):
         from . import server
-        self.session.openWithCallback(self.start, server.XClass_AddServer)
+        self.session.openWithCallback(lambda: self.start, server.XClass_AddServer)
 
     def downloadManager(self):
         from . import downloadmanager
-        self.session.openWithCallback(self.start, downloadmanager.XClass_DownloadManager)
+        self.session.openWithCallback(lambda: self.start, downloadmanager.XClass_DownloadManager)
 
     def __next__(self):
         index = self["list"].getCurrent()[0]
