@@ -219,11 +219,6 @@ class XClass_AddServer(ConfigListScreen, Screen):
             with open(playlist_file, "a") as f:
                 f.write("\n" + str(playlistline) + "\n")
 
-            try:
-                shutil.copyfile(playlist_file, '/home/playlists.txt')
-            except:
-                pass
-
             self.session.open(MessageBox, _("Playlist added successfully."), type=MessageBox.TYPE_INFO, timeout=5)
             self.close()
 
