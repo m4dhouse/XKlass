@@ -192,7 +192,7 @@ if os.path.exists("/usr/bin/apt-get"):
     vodstreamtypelist.append("8193")
 
 
-def clear_caches(self):
+def clear_caches():
     try:
         with open("/proc/sys/vm/drop_caches", "w") as drop_caches:
             drop_caches.write("1\n2\n3\n")
