@@ -31,8 +31,8 @@ class XClass_Start(Screen):
 
         self.playlists_all = loadfiles.process_files()
 
-        self.defaultplaylist = cfg.defaultplaylist.getValue()
-        self.lastcategory = cfg.lastcategory.getValue()
+        self.defaultplaylist = cfg.defaultplaylist.value
+        self.lastcategory = cfg.lastcategory.value
 
         if self.defaultplaylist:
             for playlist in self.playlists_all:
@@ -62,7 +62,7 @@ class XClass_Start(Screen):
     def check_dependencies(self):
 
         try:
-            if cfg.locationvalid.getValue() is False:
+            if cfg.locationvalid.value is False:
                 self.session.open(MessageBox, _("Playlists.txt location is invalid and has been reset."), type=MessageBox.TYPE_INFO, timeout=5)
                 cfg.locationvalid.setValue(True)
                 cfg.save()
