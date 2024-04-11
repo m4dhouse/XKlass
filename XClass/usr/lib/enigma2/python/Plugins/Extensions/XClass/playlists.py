@@ -195,7 +195,7 @@ class XClass_Playlists(Screen):
             if response:
                 self.playlists_all[index].update(response)
             else:
-                self.playlists_all[index]["user_info"] = []
+                self.playlists_all[index]["user_info"] = {}
 
         self.buildPlaylistList()
 
