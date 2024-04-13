@@ -3,65 +3,63 @@
 
 from __future__ import absolute_import, print_function
 
+import base64
+import json
+import os
+import re
+import time
+from datetime import datetime, timedelta
+from itertools import cycle, islice
+
+from PIL import Image, ImageChops, ImageFile, PngImagePlugin
 from . import _
 from . import xclass_globals as glob
-
-from .plugin import skin_directory, screenwidth, common_path, hdr, cfg, dir_tmp, pythonVer, playlists_json
+from .plugin import cfg, common_path, dir_tmp, hdr, playlists_json, pythonVer, screenwidth, skin_directory
 from .xStaticText import StaticText
 
 from Components.ActionMap import ActionMap
+from Components.Label import Label
+from Components.ProgressBar import ProgressBar
+from Components.Pixmap import MultiPixmap, Pixmap
+from Components.ServiceEventTracker import InfoBarBase, ServiceEventTracker
+from Components.config import ConfigClock, ConfigText, NoSave
+from enigma import eTimer, eServiceReference, iPlayableService, ePicLoad
+from RecordTimer import RecordTimerEntry
+from Screens.InfoBarGenerics import (InfoBarAudioSelection, InfoBarMenu, InfoBarMoviePlayerSummarySupport,
+                                     InfoBarSeek, InfoBarServiceErrorPopupSupport, InfoBarSubtitleSupport, InfoBarSummarySupport, InfoBarNotifications)
+
+from Screens.MessageBox import MessageBox
+from Screens.Screen import Screen
+from ServiceReference import ServiceReference
+from Tools.BoundFunction import boundFunction
+from Tools import Notifications
+
+from twisted.web.client import downloadPage
+
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
 
 try:
     from enigma import eAVSwitch
 except Exception:
     from enigma import eAVControl as eAVSwitch
 
-
-from Components.config import NoSave, ConfigText, ConfigClock
-from Components.Label import Label
-from Components.ProgressBar import ProgressBar
-from Components.Pixmap import Pixmap, MultiPixmap
-from Components.ServiceEventTracker import ServiceEventTracker, InfoBarBase
-from datetime import datetime, timedelta
-from enigma import eTimer, eServiceReference, iPlayableService, ePicLoad
-from itertools import cycle, islice
-from PIL import Image, ImageChops, ImageFile, PngImagePlugin
-from RecordTimer import RecordTimerEntry
-from Tools import Notifications
-
-from Screens.InfoBarGenerics import InfoBarMenu, InfoBarSeek, InfoBarAudioSelection, InfoBarMoviePlayerSummarySupport, \
-    InfoBarSubtitleSupport, InfoBarSummarySupport, InfoBarServiceErrorPopupSupport, InfoBarNotifications
-try:
-    from .resumepoints import setResumePoint, getResumePoint
-except Exception as e:
-    print(e)
-
-from Screens.MessageBox import MessageBox
-from Screens.Screen import Screen
-from ServiceReference import ServiceReference
-from Tools.BoundFunction import boundFunction
-from twisted.web.client import downloadPage
-
-try:
-    from urlparse import urlparse
-except:
-    from urllib.parse import urlparse
-
-import json
-import os
-import re
-import requests
-from requests.adapters import HTTPAdapter, Retry
-import base64
-import time
-
 try:
     from http.client import HTTPConnection
     HTTPConnection.debuglevel = 0
-except:
+except ImportError:
     from httplib import HTTPConnection
     HTTPConnection.debuglevel = 0
 
+try:
+    from .resumepoints import setResumePoint, getResumePoint
+except ImportError as e:
+    print(e)
+
+import requests
+from requests.adapters import HTTPAdapter, Retry
 
 if cfg.subs.value is True:
     try:
@@ -153,17 +151,6 @@ def _mypreinit():
 
 Image.preinit = _mypreinit
 
-"""
-aspectList = [
-    (_("4:3 Letterbox"), "0"),
-    (_("4:3 PanScan"), "1"),
-    (_("16:9"), "2"),
-    (_("16:9 Always"), "3"),
-    (_("16:10 Letterbox"), "4"),
-    (_("16:10 PanScan"), "5"),
-    (_("16:9 Letterbox"), "6")
-]
-"""
 
 VIDEO_ASPECT_RATIO_MAP = {
     0: "4:3 Letterbox",
@@ -402,12 +389,10 @@ class XClass_StreamPlayer(
 
     def __init__(self, session, streamurl, servicetype, direct_source=None, stream_id=None):
         Screen.__init__(self, session)
-
         self.session = session
 
-        if str(os.path.splitext(streamurl)[-1]) == ".m3u8":
-            if servicetype == "1":
-                servicetype = "4097"
+        if str(os.path.splitext(streamurl)[-1]) == ".m3u8" and servicetype == "1":
+            servicetype = "4097"
 
         for x in (
             InfoBarBase,
@@ -432,6 +417,8 @@ class XClass_StreamPlayer(
         self.hasStreamData = False
 
         skin = os.path.join(skin_path, "streamplayer.xml")
+        with open(skin, "r") as f:
+            self.skin = f.read()
 
         self["x_description"] = StaticText()
         self["nowchannel"] = StaticText()
@@ -442,22 +429,20 @@ class XClass_StreamPlayer(
         self["streamcat"] = StaticText()
         self["streamtype"] = StaticText()
         self["extension"] = StaticText()
+
         self["progress"] = ProgressBar()
         self["progress"].hide()
+
         self["picon"] = Pixmap()
+        self["PTSSeekBack"] = Pixmap()
+        self["PTSSeekPointer"] = Pixmap()
 
         self["eventname"] = Label()
         self["state"] = Label()
         self["speed"] = Label()
         self["statusicon"] = MultiPixmap()
 
-        self["PTSSeekBack"] = Pixmap()
-        self["PTSSeekPointer"] = Pixmap()
-
         self.ar_id_player = 0
-
-        with open(skin, "r") as f:
-            self.skin = f.read()
 
         self.setup_title = _("TV")
 
@@ -473,7 +458,8 @@ class XClass_StreamPlayer(
             "info": self.toggleStreamType,
             "green": self.nextAR,
             "rec": self.IPTVstartInstantRecording,
-            "0": self.restartStream
+            "0": self.restartStream,
+            "ok": self.refreshInfobar,
         }, -2)
 
         self.__event_tracker = ServiceEventTracker(
@@ -491,26 +477,16 @@ class XClass_StreamPlayer(
         self.onFirstExecBegin.append(boundFunction(self.playStream, self.servicetype, self.streamurl, self.direct_source))
 
     def restartStream(self):
-        # print("*** restartStream ***")
         if self.session:
             self.session.nav.stopService()
             self.playStream(self.servicetype, self.streamurl, self.direct_source)
-        else:
-            return
 
     def refreshInfobar(self):
-        # print("*** refreshInfobar ***")
-        start = ""
-        end = ""
+        start = glob.currentepglist[glob.currentchannellistindex][2]
+        end = glob.currentepglist[glob.currentchannellistindex][5]
         percent = 0
 
-        if glob.currentepglist[glob.currentchannellistindex][2] != "":
-            start = glob.currentepglist[glob.currentchannellistindex][2]
-
-        if glob.currentepglist[glob.currentchannellistindex][5] != "":
-            end = glob.currentepglist[glob.currentchannellistindex][5]
-
-        if start != "" and end != "":
+        if start and end:
             self["progress"].show()
             start_time = datetime.strptime(start, "%H:%M")
             end_time = datetime.strptime(end, "%H:%M")
@@ -551,76 +527,50 @@ class XClass_StreamPlayer(
         next_time = str(glob.currentepglist[glob.currentchannellistindex][5])
 
         if next_time and ((current_hour >= int(next_time.split(":")[0]) and current_minute > int(next_time.split(":")[1])) or (current_hour > int(next_time.split(":")[0]) and current_minute >= int(next_time.split(":")[1]))):
-            # print("*** updating short epg ***")
-            response = ""
-
-            player_api = str(glob.current_playlist["playlist_info"]["player_api"])
-            stream_id = str(glob.currentchannellist[glob.currentchannellistindex][4])
-
-            shortEPGJson = []
-
-            url = player_api + "&action=get_short_epg&stream_id=" + str(stream_id) + "&limit=2"
-
-            retries = Retry(total=3, backoff_factor=1)
-            adapter = HTTPAdapter(max_retries=retries)
-            http = requests.Session()
-            http.mount("http://", adapter)
-            http.mount("https://", adapter)
-            response = ""
             try:
+                player_api = str(glob.current_playlist["playlist_info"]["player_api"])
+                stream_id = str(glob.currentchannellist[glob.currentchannellistindex][4])
+
+                shortEPGJson = []
+                url = player_api + "&action=get_short_epg&stream_id=" + str(stream_id) + "&limit=2"
+
+                retries = Retry(total=3, backoff_factor=1)
+                adapter = HTTPAdapter(max_retries=retries)
+                http = requests.Session()
+                http.mount("http://", adapter)
+                http.mount("https://", adapter)
+
                 r = http.get(url, headers=hdr, timeout=(10, 20), verify=False)
                 r.raise_for_status()
                 if r.status_code == requests.codes.ok:
-                    try:
-                        response = r.json()
-                    except Exception as e:
-                        print(e)
+                    response = r.json()
+                    shortEPGJson = response.get("epg_listings", [])
 
-            except Exception as e:
-                print(e)
-
-            if response:
-                shortEPGJson = response
-
-                self.epgshortlist = []
-
-                if "epg_listings" in shortEPGJson and shortEPGJson["epg_listings"] and len(shortEPGJson["epg_listings"]) > 1:
-                    for listing in shortEPGJson["epg_listings"]:
-
-                        title = ""
-                        description = ""
-                        start = ""
-
-                        if "title" in listing:
-                            title = base64.b64decode(listing["title"]).decode("utf-8")
-
-                        if "description" in listing:
-                            description = base64.b64decode(listing["description"]).decode("utf-8")
-
-                        shift = 0
-
-                        if "serveroffset" in glob.current_playlist["player_info"]:
-                            shift = int(glob.current_playlist["player_info"]["serveroffset"])
-
-                        if listing["start"] and listing["end"]:
-
-                            start = listing["start"]
+                if shortEPGJson and len(shortEPGJson) > 1:
+                    self.epgshortlist = []
+                    for listing in shortEPGJson:
+                        title = base64.b64decode(listing.get("title", "")).decode("utf-8")
+                        description = base64.b64decode(listing.get("description", "")).decode("utf-8")
+                        shift = int(glob.current_playlist["player_info"].get("serveroffset", 0))
+                        start = listing.get("start", "")
+                        end = listing.get("end", "")
+                        if start and end:
                             start_datetime = datetime.strptime(start, "%Y-%m-%d %H:%M:%S") + timedelta(hours=shift)
-
-                        start_time = start_datetime.strftime("%H:%M")
-                        self.epgshortlist.append([str(title), str(description), str(start_time)])
+                            start_time = start_datetime.strftime("%H:%M")
+                            self.epgshortlist.append([str(title), str(description), str(start_time)])
 
                     templist = list(glob.currentepglist[glob.currentchannellistindex])
-
-                    templist[4] = str(self.epgshortlist[0][1])  # description
-                    templist[3] = str(self.epgshortlist[0][0])  # title
-                    templist[2] = str(self.epgshortlist[0][2])  # now start
-                    templist[6] = str(self.epgshortlist[1][0])  # next title
-                    templist[5] = str(self.epgshortlist[1][2])  # next start
+                    if self.epgshortlist:
+                        templist[4] = str(self.epgshortlist[0][1])  # description
+                        templist[3] = str(self.epgshortlist[0][0])  # title
+                        templist[2] = str(self.epgshortlist[0][2])  # now start
+                        templist[6] = str(self.epgshortlist[1][0])  # next title
+                        templist[5] = str(self.epgshortlist[1][2])  # next start
 
                     glob.currentepglist[glob.currentchannellistindex] = tuple(templist)
-
                     self["progress"].setValue(0)
+            except Exception as e:
+                print("Error during short EPG update:", e)
 
         self["x_description"].setText(glob.currentepglist[glob.currentchannellistindex][4])
         self["nowchannel"].setText(glob.currentchannellist[glob.currentchannellistindex][0])
