@@ -555,7 +555,7 @@ class XClass_Categories(Screen):
 
                     # Resize image with Lanczos resampling if available, otherwise use ANTIALIAS
                     try:
-                        im.thumbnail(size, Image.LANCZOS)
+                        im.thumbnail(size, Image.Resampling.LANCZOS)
                     except:
                         im.thumbnail(size, Image.ANTIALIAS)
 
@@ -573,7 +573,8 @@ class XClass_Categories(Screen):
                     bg.save(original, "PNG")
 
                     # Set pixmap for picon instance
-                    self.setPixmap(original)
+                    if self["picon"].instance:
+                        self["picon"].instance.setPixmapFromFile(original)
 
                 except Exception as e:
                     print("Error resizing image:", e)
