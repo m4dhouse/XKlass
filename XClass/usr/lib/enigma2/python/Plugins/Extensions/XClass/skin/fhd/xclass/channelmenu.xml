@@ -7,7 +7,7 @@
 			MultiContentEntryText(pos=(15, 0), size=(45, 60), font=1, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_CENTER|RT_VALIGN_CENTER, text = 2),
 			MultiContentEntryText(pos=(75, 0), size=(315, 60), font=0, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_LEFT|RT_VALIGN_CENTER, text = 1),
 			],
-			"fonts": [gFont("xstreamityregular", 27), gFont("class", 48)],
+			"fonts": [gFont("xclassregular", 27), gFont("class", 48)],
 			"itemHeight": 60,
 			"scrollbarMode": "showOnDemand"
 			}</convert>
