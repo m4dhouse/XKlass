@@ -282,7 +282,7 @@ class XClass_Playlists(Screen):
             if "auth" in user_info:
                 status = _("Not Authorised")
 
-                if user_info["auth"] == 1:
+                if str(user_info["auth"]) == "1":
                     user_status = user_info.get("status", "")
                     status_map = {
                         "Active": _("Active"),
@@ -415,14 +415,14 @@ class XClass_Playlists(Screen):
         if self.list:
             current_playlist = glob.current_playlist
 
-            if "user_info" in current_playlist and "auth" in current_playlist["user_info"] and current_playlist["user_info"]["auth"] == 1:
+            if "user_info" in current_playlist and "auth" in current_playlist["user_info"] and str(current_playlist["user_info"]["auth"]) == "1":
                 self.session.open(serverinfo.XClass_UserInfo)
 
     def getStreamTypes(self):
         from . import menu
 
         user_info = glob.current_playlist.get("user_info", {})
-        if "auth" in user_info and user_info["auth"] == 1 and user_info.get("status") == "Active":
+        if "auth" in user_info and str(user_info["auth"]) == "1" and user_info.get("status") == "Active":
             self.session.open(menu.XClass_Menu)
             self.checkoneplaylist()
 
