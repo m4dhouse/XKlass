@@ -1,0 +1,17 @@
+<screen name="XKlassChannelMenu" position="1440,0" size="480,1080" backgroundColor="#091153" flags="wfNoBorder" zPosition="10">
+	<eLabel position="0,0" size="480,1080" backgroundColor="#091153" zPosition="-1"/>
+		<widget source="version" render="Label" position="center, 150" size="480,27" font="xklassregular;18" foregroundColor="#ffffff" backgroundColor="#091153" halign="center" valign="center" transparent="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/fhd/common/logo.png" position="center,30" size="320,120" alphatest="blend" zPosition="1"/>
+		<widget source="list" render="Listbox" position="30,300" size="420,990" foregroundColor="#ffffff" backgroundColor="#2a70a4" foregroundColorSelected="#ffffff" backgroundColorSelected="#296fa3" itemHeight="60" scrollbarMode="showOnDemand" enableWrapAround="1" transparent="1" zPosition="2">
+		<convert type="TemplatedMultiContent">{"template": [
+			MultiContentEntryText(pos=(15, 0), size=(45, 60), font=1, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_CENTER|RT_VALIGN_CENTER, text = 2),
+			MultiContentEntryText(pos=(75, 0), size=(315, 60), font=0, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_LEFT|RT_VALIGN_CENTER, text = 1),
+			],
+			"fonts": [gFont("xklassregular", 27), gFont("class", 48)],
+			"itemHeight": 60,
+			"scrollbarMode": "showOnDemand"
+			}</convert>
+	</widget>
+</screen>
+
+
