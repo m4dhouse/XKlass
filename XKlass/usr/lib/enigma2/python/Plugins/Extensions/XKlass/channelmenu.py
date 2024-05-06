@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from . import _
-from . import xclass_globals as glob
+from . import xklass_globals as glob
 from .plugin import skin_directory, cfg, version
 from .xStaticText import StaticText
 

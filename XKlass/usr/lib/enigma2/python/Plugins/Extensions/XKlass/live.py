@@ -288,7 +288,7 @@ class XKlass_Categories(Screen):
 
         self["channel_actions"].setEnabled(False)
 
-        self['dialogactions'] = ActionMap(['XClassActions'], {
+        self['dialogactions'] = ActionMap(['XKlassActions'], {
             "red": self.d_quit,
             "cancel": self.d_quit,
             "green": self.d_next,
@@ -1735,7 +1735,7 @@ class XKlass_Categories(Screen):
 
     def showPopupMenu(self):
         from . import channelmenu
-        glob.ChoiceBoxDialog = self.session.instantiateDialog(channelmenu.XClass_ChannelMenu)
+        glob.ChoiceBoxDialog = self.session.instantiateDialog(channelmenu.XKlass_ChannelMenu)
         self.showChoiceBoxDialog()
 
     def d_quit(self):

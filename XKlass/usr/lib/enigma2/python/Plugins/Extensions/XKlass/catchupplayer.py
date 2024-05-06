@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 from PIL import Image, ImageFile, PngImagePlugin
 from . import _
-from . import xclass_globals as glob
+from . import xklass_globals as glob
 from .plugin import cfg, common_path, dir_tmp, pythonVer, screenwidth, skin_directory
 from .xStaticText import StaticText
 

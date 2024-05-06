@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from . import _
-from . import xstreamity_globals as glob
+from . import xklass_globals as glob
 from .plugin import skin_directory, playlist_file, playlists_json, cfg
 from .xStaticText import StaticText
 
@@ -22,7 +22,7 @@ except ImportError:
     from urllib.parse import urlparse, parse_qs
 
 
-class XStreamity_Settings(ConfigListScreen, Screen):
+class XKlass_Settings(ConfigListScreen, Screen):
     ALLOW_SUSPEND = True
 
     def __init__(self, session):
@@ -53,7 +53,7 @@ class XStreamity_Settings(ConfigListScreen, Screen):
         self["HelpWindow"] = Pixmap()
         self["HelpWindow"].hide()
 
-        self["actions"] = ActionMap(["XStreamityActions"], {
+        self["actions"] = ActionMap(["XKlassActions"], {
             "cancel": self.cancel,
             "red": self.cancel,
             "green": self.save,
