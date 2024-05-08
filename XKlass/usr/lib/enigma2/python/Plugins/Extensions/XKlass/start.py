@@ -38,10 +38,10 @@ class XKlass_Start(Screen):
             if self.defaultplaylist:
                 for playlist in self.playlists_all:
                     if str(playlist["playlist_info"]["name"]) == self.defaultplaylist:
-                        glob.current_playlist = playlist
+                        glob.active_playlist = playlist
                         break
             else:
-                glob.current_playlist = self.playlists_all[0]
+                glob.active_playlist = self.playlists_all[0]
 
             if self.session.nav.getCurrentlyPlayingServiceReference():
                 glob.currentPlayingServiceRef = self.session.nav.getCurrentlyPlayingServiceReference()
@@ -49,14 +49,14 @@ class XKlass_Start(Screen):
                 glob.newPlayingServiceRef = self.session.nav.getCurrentlyPlayingServiceReference()
                 glob.newPlayingServiceRefString = glob.newPlayingServiceRef.toString()
 
-            self.player_api = glob.current_playlist["playlist_info"]["player_api"]
+            self.player_api = glob.active_playlist["playlist_info"]["player_api"]
 
             self.p_live_categories_url = str(self.player_api) + "&action=get_live_categories"
             self.p_vod_categories_url = str(self.player_api) + "&action=get_vod_categories"
             self.p_series_categories_url = str(self.player_api) + "&action=get_series_categories"
             self.p_live_streams_url = str(self.player_api) + "&action=get_live_streams"
 
-            glob.current_playlist["data"]["live_streams"] = []
+            glob.active_playlist["data"]["live_streams"] = []
 
         self.onFirstExecBegin.append(self.check_dependencies)
 
@@ -115,106 +115,115 @@ class XKlass_Start(Screen):
     def makeUrlList(self):
         self.url_list = []
 
-        self.url_list.append([self.p_live_categories_url, 0])
-        self.url_list.append([self.p_vod_categories_url, 1])
-        self.url_list.append([self.p_series_categories_url, 2])
+        player_api = str(glob.active_playlist["playlist_info"].get("player_api", ""))
+        full_url = str(glob.active_playlist["playlist_info"].get("full_url", ""))
+        domain = str(glob.active_playlist["playlist_info"].get("domain", ""))
+        username = str(glob.active_playlist["playlist_info"].get("username", ""))
+        password = str(glob.active_playlist["playlist_info"].get("password", ""))
+        if "get.php" in full_url and domain and username and password:
+            self.url_list.append([player_api, 0])
+            self.url_list.append([self.p_live_categories_url, 1])
+            self.url_list.append([self.p_vod_categories_url, 2])
+            self.url_list.append([self.p_series_categories_url, 3])
 
-        if glob.current_playlist["data"]["data_downloaded"] is False:
-            self.url_list.append([self.p_live_streams_url, 3])
+            if glob.active_playlist["data"]["data_downloaded"] is False:
+                self.url_list.append([self.p_live_streams_url, 4])
 
         self.process_downloads()
 
     def download_url(self, url):
         import requests
-        category = url[1]
-        r = ""
-
-        retries = Retry(total=3, backoff_factor=1)
-        adapter = HTTPAdapter(max_retries=retries)
-        http = requests.Session()
-        http.mount("http://", adapter)
-        http.mount("https://", adapter)
+        index = url[1]
         response = ""
-        try:
-            r = http.get(url[0], headers=hdr, timeout=(10, 20), verify=False)
-            r.raise_for_status()
-            if r.status_code == requests.codes.ok:
-                try:
-                    response = r.json()
-                    return category, response
-                except Exception as e:
-                    print(e)
-                    return category, ""
 
-        except Exception as e:
-            print(e)
-            return category, ""
+        retries = Retry(total=2, backoff_factor=1)
+        adapter = HTTPAdapter(max_retries=retries)
+
+        with requests.Session() as http:
+            http.mount("http://", adapter)
+            http.mount("https://", adapter)
+
+            try:
+                r = http.get(url[0], headers=hdr, timeout=(6, 10), verify=False)
+                r.raise_for_status()
+
+                if r.status_code == requests.codes.ok:
+                    try:
+                        response = r.json()
+                    except ValueError as e:
+                        print("Error decoding JSON:", e, url)
+
+            except Exception as e:
+                print("Request error:", e)
+
+        return index, response
 
     def process_downloads(self):
-        self.retry = 0
-        glob.current_playlist["data"]["live_categories"] = []
-        glob.current_playlist["data"]["vod_categories"] = []
-        glob.current_playlist["data"]["series_categories"] = []
+        threads = min(len(self.url_list), 10)
 
-        threads = len(self.url_list)
+        self.retry = 0
+        glob.active_playlist["data"]["live_categories"] = []
+        glob.active_playlist["data"]["vod_categories"] = []
+        glob.active_playlist["data"]["series_categories"] = []
 
         if hasConcurrent or hasMultiprocessing:
             if hasConcurrent:
                 print("******* trying concurrent futures ******")
                 try:
                     from concurrent.futures import ThreadPoolExecutor
-                    executor = ThreadPoolExecutor(max_workers=threads)
-
-                    with executor:
-                        results = executor.map(self.download_url, self.url_list)
-
+                    with ThreadPoolExecutor(max_workers=threads) as executor:
+                        results = list(executor.map(self.download_url, self.url_list))
                 except Exception as e:
-                    print(e)
+                    print("Concurrent execution error:", e)
 
             elif hasMultiprocessing:
                 try:
-                    print("*** trying multiprocessing ThreadPool ***")
                     from multiprocessing.pool import ThreadPool
                     pool = ThreadPool(threads)
-                    results = pool.imap(self.download_url, self.url_list)
-
+                    results = pool.imap_unordered(self.download_url, self.url_list)
                     pool.close()
                     pool.join()
-
                 except Exception as e:
-                    print(e)
+                    print("Multiprocessing execution error:", e)
 
-            for category, response in results:
+            for index, response in results:
                 if response:
-                    # add categories to main json file
-                    if category == 0:
-                        glob.current_playlist["data"]["live_categories"] = response
-                    if category == 1:
-                        glob.current_playlist["data"]["vod_categories"] = response
-                    if category == 2:
-                        glob.current_playlist["data"]["series_categories"] = response
-                    if category == 3:
-                        glob.current_playlist["data"]["live_streams"] = response
+                    if index == 0:
+                        if "user_info" in response:
+                            glob.active_playlist.update(response)
+                        else:
+                            glob.active_playlist["user_info"] = {}
+                    if index == 1:
+                        glob.active_playlist["data"]["live_categories"] = response
+                    if index == 2:
+                        glob.active_playlist["data"]["vod_categories"] = response
+                    if index == 3:
+                        glob.active_playlist["data"]["series_categories"] = response
+                    if index == 4:
+                        glob.active_playlist["data"]["live_streams"] = response
         else:
-
-            print("*** trying sequential ***")
+            # print("*** trying sequential ***")
             for url in self.url_list:
                 result = self.download_url(url)
-                category = result[0]
+                index = result[0]
                 response = result[1]
                 if response:
-                    # add categories to main json file
-                    if category == 0:
-                        glob.current_playlist["data"]["live_categories"] = response
-                    if category == 1:
-                        glob.current_playlist["data"]["vod_categories"] = response
-                    if category == 2:
-                        glob.current_playlist["data"]["series_categories"] = response
-                    if category == 3:
-                        glob.current_playlist["data"]["live_streams"] = response
+                    if index == 0:
+                        if "user_info" in response:
+                            glob.active_playlist.update(response)
+                        else:
+                            glob.active_playlist["user_info"] = {}
+                    if index == 1:
+                        glob.active_playlist["data"]["live_categories"] = response
+                    if index == 2:
+                        glob.active_playlist["data"]["vod_categories"] = response
+                    if index == 3:
+                        glob.active_playlist["data"]["series_categories"] = response
+                    if index == 4:
+                        glob.active_playlist["data"]["live_streams"] = response
 
         # self["splash"].hide()
-        glob.current_playlist["data"]["data_downloaded"] = True
+        glob.active_playlist["data"]["data_downloaded"] = True
         self.openCategories()
 
     def openCategories(self):
