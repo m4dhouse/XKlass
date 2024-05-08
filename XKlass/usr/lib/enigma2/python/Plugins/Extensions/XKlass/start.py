@@ -34,28 +34,29 @@ class XKlass_Start(Screen):
         self.defaultplaylist = cfg.defaultplaylist.value
         self.lastcategory = cfg.lastcategory.value
 
-        if self.defaultplaylist:
-            for playlist in self.playlists_all:
-                if str(playlist["playlist_info"]["name"]) == self.defaultplaylist:
-                    glob.current_playlist = playlist
-                    break
-        else:
-            glob.current_playlist = self.playlists_all[0]
+        if self.playlists_all:
+            if self.defaultplaylist:
+                for playlist in self.playlists_all:
+                    if str(playlist["playlist_info"]["name"]) == self.defaultplaylist:
+                        glob.current_playlist = playlist
+                        break
+            else:
+                glob.current_playlist = self.playlists_all[0]
 
-        if self.session.nav.getCurrentlyPlayingServiceReference():
-            glob.currentPlayingServiceRef = self.session.nav.getCurrentlyPlayingServiceReference()
-            glob.currentPlayingServiceRefString = self.session.nav.getCurrentlyPlayingServiceReference().toString()
-            glob.newPlayingServiceRef = self.session.nav.getCurrentlyPlayingServiceReference()
-            glob.newPlayingServiceRefString = glob.newPlayingServiceRef.toString()
+            if self.session.nav.getCurrentlyPlayingServiceReference():
+                glob.currentPlayingServiceRef = self.session.nav.getCurrentlyPlayingServiceReference()
+                glob.currentPlayingServiceRefString = self.session.nav.getCurrentlyPlayingServiceReference().toString()
+                glob.newPlayingServiceRef = self.session.nav.getCurrentlyPlayingServiceReference()
+                glob.newPlayingServiceRefString = glob.newPlayingServiceRef.toString()
 
-        self.player_api = glob.current_playlist["playlist_info"]["player_api"]
+            self.player_api = glob.current_playlist["playlist_info"]["player_api"]
 
-        self.p_live_categories_url = str(self.player_api) + "&action=get_live_categories"
-        self.p_vod_categories_url = str(self.player_api) + "&action=get_vod_categories"
-        self.p_series_categories_url = str(self.player_api) + "&action=get_series_categories"
-        self.p_live_streams_url = str(self.player_api) + "&action=get_live_streams"
+            self.p_live_categories_url = str(self.player_api) + "&action=get_live_categories"
+            self.p_vod_categories_url = str(self.player_api) + "&action=get_vod_categories"
+            self.p_series_categories_url = str(self.player_api) + "&action=get_series_categories"
+            self.p_live_streams_url = str(self.player_api) + "&action=get_live_streams"
 
-        glob.current_playlist["data"]["live_streams"] = []
+            glob.current_playlist["data"]["live_streams"] = []
 
         self.onFirstExecBegin.append(self.check_dependencies)
 
