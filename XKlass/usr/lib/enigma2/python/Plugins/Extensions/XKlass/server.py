@@ -1,22 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# Standard library imports
 import os
 import shutil
 import json
 import requests
 from requests.adapters import HTTPAdapter, Retry
-
-from . import _
-from .plugin import skin_directory, playlist_file, hdr, cfg, playlists_json
-from .xStaticText import StaticText
-
-from Components.ActionMap import ActionMap
-from Components.ConfigList import ConfigListScreen
-from Components.config import getConfigListEntry, NoSave, ConfigText, ConfigSelection, ConfigNumber, ConfigYesNo, ConfigEnableDisable
-from Components.Pixmap import Pixmap
-from Screens.MessageBox import MessageBox
-from Screens.Screen import Screen
 
 try:
     from http.client import HTTPConnection
@@ -24,6 +14,22 @@ try:
 except ImportError:
     from httplib import HTTPConnection
     HTTPConnection.debuglevel = 0
+
+# Enigma2 components
+from Components.ActionMap import ActionMap
+from Components.ConfigList import ConfigListScreen
+from Components.config import getConfigListEntry, NoSave, ConfigText, ConfigSelection, ConfigNumber, ConfigYesNo, ConfigEnableDisable
+from Components.Pixmap import Pixmap
+from Screens.MessageBox import MessageBox
+from Screens.Screen import Screen
+
+# Local application/library-specific imports
+from . import _
+from .plugin import skin_directory, playlist_file, cfg, playlists_json
+from .xStaticText import StaticText
+
+
+hdr = {'User-Agent': str(cfg.useragent.value)}
 
 
 class XKlass_AddServer(ConfigListScreen, Screen):
@@ -41,7 +47,7 @@ class XKlass_AddServer(ConfigListScreen, Screen):
         with open(skin, "r") as f:
             self.skin = f.read()
 
-        self.setup_title = _("Add Xtream Codes Playlist")
+        self.setup_title = _("Add Playlist")
 
         self.onChangedEntry = []
 

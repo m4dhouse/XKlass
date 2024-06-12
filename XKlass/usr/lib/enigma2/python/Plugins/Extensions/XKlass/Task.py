@@ -6,14 +6,13 @@
 
 from __future__ import division
 from __future__ import print_function
-
-from . import _
-
-from Tools.CList import CList
 import os
 import sys
 from six.moves import map
 from six.moves import range
+from Tools.CList import CList
+from . import _
+
 
 isDreambox = False
 if os.path.exists("/usr/bin/apt-get"):

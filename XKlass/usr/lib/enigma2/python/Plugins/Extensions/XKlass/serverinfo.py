@@ -1,18 +1,21 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from . import _
-from . import xklass_globals as glob
-from .plugin import skin_directory, cfg
-from .xStaticText import StaticText
+# Standard library imports
+import json
+import os
 
+# Enigma2 components
 from Components.Label import Label
 from Components.ActionMap import ActionMap
 from datetime import datetime
 from Screens.Screen import Screen
 
-import json
-import os
+# Local application/library-specific imports
+from . import _
+from . import xklass_globals as glob
+from .plugin import skin_directory, cfg
+from .xStaticText import StaticText
 
 
 class XKlass_UserInfo(Screen):

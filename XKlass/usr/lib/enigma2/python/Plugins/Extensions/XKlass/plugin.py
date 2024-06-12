@@ -1,17 +1,22 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# Standard library imports
 import os
 import shutil
 import sys
 import time
 import twisted.python.runtime
+from os.path import isdir
 
-from . import _
+# Enigma2 components
 from Components.config import config, ConfigSubsection, ConfigSelection, ConfigDirectory, ConfigYesNo, ConfigSelectionNumber, ConfigClock, ConfigPIN, ConfigInteger, ConfigText
 from enigma import eTimer, getDesktop, addFont
 from Plugins.Plugin import PluginDescriptor
-from os.path import isdir
+
+# Local application/library-specific imports
+from . import _
+
 
 try:
     from multiprocessing.pool import ThreadPool
@@ -49,6 +54,7 @@ elif screenwidth.width() > 1280:
 else:
     skin_directory = os.path.join(dir_plugins, "skin/hd/")
 
+
 folders = [folder for folder in os.listdir(skin_directory) if folder != "common"]
 
 languages = [
@@ -79,21 +85,12 @@ languages = [
     ("sq-AL", "shqip")
 ]
 
-
-def defaultMoviePath():
-    result = config.usage.default_path.value
-    if not isdir(result):
-        from Tools import Directories
-        return Directories.defaultRecordingLocation(config.usage.default_path.value)
-    return result
-
-
-if not isdir(config.movielist.last_videodir.value):
-    try:
-        config.movielist.last_videodir.value = defaultMoviePath()
-        config.movielist.last_videodir.save()
-    except:
-        pass
+useragents = [
+    ("Enigma2 - XKlass Plugin", "XKlass"),
+    ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36", "Chrome 124"),
+    ("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0", "Firefox 125"),
+    ("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.165 Mobile Safari/537.36", "Android")
+]
 
 # Configurations initialization
 config.plugins.XKlass = ConfigSubsection()
@@ -118,20 +115,28 @@ cfg.livetype = ConfigSelection(default="4097", choices=live_streamtype_choices)
 cfg.vodtype = ConfigSelection(default="4097", choices=vod_streamtype_choices)
 
 try:
-    newdownloadlocation = cfg.downloadlocation.value
-    if newdownloadlocation:
-        cfg.downloadlocation = ConfigDirectory(default=newdownloadlocation)
-    else:
-        cfg.downloadlocation = ConfigDirectory(default=config.movielist.last_videodir.value)
-except Exception as e:
-    print(e)
-    cfg.downloadlocation = ConfigDirectory(default=config.movielist.last_videodir.value)
+    result = cfg.downloadlocation.value
+except:
+    result = ""
+
+if not result:
+    try:
+        if isdir("/media/hdd/movie/"):
+            result = "/media/hdd/movie/"
+        elif isdir("/media/usb/movie/"):
+            result = "/media/usb/movie/"
+        elif isdir(config.usage.instantrec_path.value):
+            result = config.usage.instantrec_path.value
+        else:
+            result = config.movielist.last_videodir.value
+    except:
+        result = config.movielist.last_videodir.value
+
+cfg.downloadlocation = ConfigDirectory(default=result)
 
 cfg.epglocation = ConfigDirectory(default="/etc/enigma2/xklass/epg/")
 cfg.location = ConfigDirectory(default=dir_etc)
 cfg.main = ConfigYesNo(default=True)
-cfg.livepreview = ConfigYesNo(default=False)
-cfg.stopstream = ConfigYesNo(default=False)
 cfg.skin = ConfigSelection(default="xklass", choices=folders)
 cfg.timeout = ConfigSelectionNumber(1, 20, 1, default=20, wraparound=True)
 cfg.TMDB = ConfigYesNo(default=True)
@@ -139,7 +144,6 @@ cfg.TMDBLanguage2 = ConfigSelection(default="", choices=languages)
 cfg.catchupstart = ConfigSelectionNumber(0, 30, 1, default=0, wraparound=True)
 cfg.catchupend = ConfigSelectionNumber(0, 30, 1, default=0, wraparound=True)
 cfg.subs = ConfigYesNo(default=False)
-cfg.skipplaylistsscreen = ConfigYesNo(default=False)
 cfg.wakeup = ConfigClock(default=((9 * 60) + 9) * 60)  # 10:09
 cfg.adult = ConfigYesNo(default=False)
 cfg.adultpin = ConfigPIN(default=0000)
@@ -154,9 +158,13 @@ cfg.infobarpicons = ConfigYesNo(default=True)
 cfg.channelcovers = ConfigYesNo(default=True)
 cfg.infobarcovers = ConfigYesNo(default=True)
 
+cfg.introvideo = ConfigYesNo(default=True)
+
 cfg.boot = ConfigYesNo(default=False)
+cfg.useragent = ConfigSelection(default="Enigma2 - XStreamity Plugin", choices=useragents)
 cfg.defaultplaylist = ConfigText()
 cfg.lastcategory = ConfigText()
+
 
 # Set default file paths
 playlist_file = os.path.join(dir_etc, "playlists.txt")
@@ -186,9 +194,10 @@ else:
 
 font_folder = os.path.join(dir_plugins, "fonts/")
 
-hdr = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
-}
+hdr = {"User-Agent": "Enigma2 - XKlass Plugin"}
+# hdr = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0"}
+# hdr = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
+
 
 # create folder for working files
 if not os.path.exists(dir_etc):
@@ -226,8 +235,8 @@ except Exception as e:
 
 
 def main(session, **kwargs):
-    from . import start
-    session.open(start.XKlass_Start)
+    from . import startmenu
+    session.open(startmenu.XKlass_MainMenu)
     return
 
 
@@ -321,8 +330,8 @@ class StartDelay:
         self.timerboot.start(delay, True)
 
     def query(self):
-        from . import start
-        glb_session.open(start.XKlass_Start)
+        from . import startmenu
+        glb_session.open(startmenu.XKlass_MainMenu)
         return
 
 

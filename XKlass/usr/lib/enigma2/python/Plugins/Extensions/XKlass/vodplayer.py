@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# Standard library imports
 from __future__ import absolute_import, print_function
 from __future__ import division
 
@@ -9,36 +10,10 @@ import os
 import re
 from itertools import cycle, islice
 
-from PIL import Image, ImageFile, PngImagePlugin
-from . import _
-from . import xklass_globals as glob
-from .plugin import cfg, dir_tmp, playlists_json, pythonVer, screenwidth, skin_directory
-from .xStaticText import StaticText
-
-from Components.ActionMap import ActionMap
-from Components.Label import Label
-from Components.Pixmap import MultiPixmap, Pixmap
-from Components.ServiceEventTracker import ServiceEventTracker, InfoBarBase
-from enigma import eTimer, eServiceReference, iPlayableService, ePicLoad
-
-from Screens.InfoBarGenerics import InfoBarSeek, InfoBarAudioSelection, InfoBarSummarySupport, InfoBarMoviePlayerSummarySupport, InfoBarSubtitleSupport
-
-
-from Screens.MessageBox import MessageBox
-from Screens.Screen import Screen
-from Tools.BoundFunction import boundFunction
-
-from twisted.web.client import downloadPage
-
 try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
-
-try:
-    from enigma import eAVSwitch
-except Exception:
-    from enigma import eAVControl as eAVSwitch
 
 try:
     from http.client import HTTPConnection
@@ -47,10 +22,37 @@ except ImportError:
     from httplib import HTTPConnection
     HTTPConnection.debuglevel = 0
 
+# Third-party imports
+from PIL import Image, ImageFile, PngImagePlugin
+from twisted.web.client import downloadPage
+
+# Enigma2 components
+from Components.Label import Label
+from Components.ActionMap import ActionMap
+from Components.Pixmap import MultiPixmap, Pixmap
+from Components.ServiceEventTracker import ServiceEventTracker, InfoBarBase
+from enigma import eTimer, eServiceReference, iPlayableService, ePicLoad
+from Tools import Notifications
+from Screens.InfoBarGenerics import InfoBarSeek, InfoBarAudioSelection, InfoBarSummarySupport, InfoBarMoviePlayerSummarySupport, InfoBarSubtitleSupport, InfoBarNotifications
+from Screens.MessageBox import MessageBox
+from Screens.Screen import Screen
+from Tools.BoundFunction import boundFunction
+
 try:
-    from .resumepoints import setResumePoint
+    from enigma import eAVSwitch
+except Exception:
+    from enigma import eAVControl as eAVSwitch
+
+try:
+    from .resumepoints import setResumePoint, getResumePoint
 except ImportError as e:
     print(e)
+
+# Local application/library-specific imports
+from . import _
+from . import xklass_globals as glob
+from .plugin import cfg, dir_tmp, playlists_json, pythonVer, screenwidth, skin_directory
+from .xStaticText import StaticText
 
 if cfg.subs.value is True:
     try:
@@ -186,15 +188,6 @@ class IPTVInfoBarShowHide():
     skipToggleShow = False
 
     def __init__(self):
-        """
-        self["ShowHideActions"] = ActionMap(["InfobarShowHideActions", "OKCancelActions"], {
-            "ok": self.OkPressed,
-            "toggleShow": self.OkPressed,
-            "cancel": self.hide,
-            "hide": self.hide,
-        }, 1)
-        """
-
         self.__event_tracker = ServiceEventTracker(screen=self, eventmap={
             iPlayableService.evStart: self.serviceStarted,
         })
@@ -363,12 +356,80 @@ class IPTVInfoBarPVRState:
 skin_path = os.path.join(skin_directory, cfg.skin.value)
 
 
+class XKlassCueSheetSupport:
+    ENABLE_RESUME_SUPPORT = False
+
+    def __init__(self):
+        self.cut_list = []
+        self.is_closing = False
+        self.started = False
+        self.resume_point = ""
+        if not os.path.exists("/etc/enigma2/xklass/resumepoints.pkl"):
+            with open("/etc/enigma2/xklass/resumepoints.pkl", "w"):
+                pass
+
+        self.__event_tracker = ServiceEventTracker(screen=self, eventmap={
+            iPlayableService.evUpdatedInfo: self.__serviceStarted,
+        })
+
+    def __serviceStarted(self):
+        if self.is_closing:
+            return
+
+        if self.ENABLE_RESUME_SUPPORT and not self.started:
+
+            self.started = True
+            last = None
+
+            service = self.session.nav.getCurrentService()
+
+            if service is None:
+                return
+
+            seekable = service.seek()
+            if seekable is None:
+                return  # Should not happen?
+
+            length = seekable.getLength() or (None, 0)
+            length[1] = abs(length[1])
+
+            try:
+                last = getResumePoint(self.session)
+            except Exception as e:
+                print(e)
+                return
+
+            if last is None:
+                return
+            if (last > 900000) and (not length[1] or (last < length[1] - 900000)):
+                self.resume_point = last
+                newlast = last // 90000
+                Notifications.AddNotificationWithCallback(self.playLastCB, MessageBox, _("Do you want to resume this playback?") + "\n" + (_("Resume position at %s") % ("%d:%02d:%02d" % (newlast // 3600, newlast % 3600 // 60, newlast % 60))), MessageBox.TYPE_YESNO, 10)
+
+    def playLastCB(self, answer):
+        if answer is True and self.resume_point:
+            service = self.session.nav.getCurrentService()
+            seekable = service.seek()
+            if seekable is not None:
+                seekable.seekTo(self.resume_point)
+        self.hideAfterResume()
+
+    def hideAfterResume(self):
+        if isinstance(self, IPTVInfoBarShowHide):
+            try:
+                self.hide()
+            except Exception as e:
+                print(e)
+
+
 class XKlass_VodPlayer(
     InfoBarBase,
     IPTVInfoBarShowHide,
     IPTVInfoBarPVRState,
+    XKlassCueSheetSupport,
     InfoBarAudioSelection,
     InfoBarSeek,
+    InfoBarNotifications,
     InfoBarSummarySupport,
     InfoBarSubtitleSupport,
     InfoBarMoviePlayerSummarySupport,
@@ -379,7 +440,7 @@ class XKlass_VodPlayer(
     ENABLE_RESUME_SUPPORT = True
     ALLOW_SUSPEND = True
 
-    def __init__(self, session, streamurl, servicetype, direct_source=None, stream_id=None):
+    def __init__(self, session, streamurl, servicetype, stream_id=None):
         Screen.__init__(self, session)
         self.session = session
 
@@ -388,11 +449,17 @@ class XKlass_VodPlayer(
             IPTVInfoBarShowHide,
             InfoBarAudioSelection,
             InfoBarSeek,
+            InfoBarNotifications,
             InfoBarSummarySupport,
             InfoBarSubtitleSupport,
             InfoBarMoviePlayerSummarySupport
         ):
             x.__init__(self)
+
+        try:
+            XKlassCueSheetSupport.__init__(self)
+        except Exception as e:
+            print(e)
 
         IPTVInfoBarPVRState.__init__(self, PVRState, True)
 
@@ -402,7 +469,6 @@ class XKlass_VodPlayer(
 
         self.streamurl = streamurl
         self.servicetype = servicetype
-        self.direct_source = direct_source
         self.stream_id = stream_id
 
         skin = os.path.join(skin_path, "vodplayer.xml")
@@ -440,7 +506,7 @@ class XKlass_VodPlayer(
             "ok": self.refreshInfobar,
         }, -2)
 
-        self.onFirstExecBegin.append(boundFunction(self.playStream, self.servicetype, self.streamurl, self.direct_source))
+        self.onFirstExecBegin.append(boundFunction(self.playStream, self.servicetype, self.streamurl))
 
     def refreshInfobar(self):
         IPTVInfoBarShowHide.OkPressed(self)
@@ -524,7 +590,7 @@ class XKlass_VodPlayer(
         with open(playlists_json, "w") as f:
             json.dump(self.playlists_all, f)
 
-    def playStream(self, servicetype, streamurl, direct_source):
+    def playStream(self, servicetype, streamurl):
         if cfg.infobarcovers.value is True:
             self.downloadImage()
 
@@ -535,9 +601,6 @@ class XKlass_VodPlayer(
             self["extension"].setText(str(os.path.splitext(streamurl)[-1]))
         except:
             pass
-
-        if glob.active_playlist["player_info"]["directsource"] == "Direct Source" and direct_source:
-            streamurl = direct_source
 
         self.reference = eServiceReference(int(self.servicetype), 0, streamurl)
         self.reference.setName(glob.currentchannellist[glob.currentchannellistindex][0])
@@ -584,8 +647,7 @@ class XKlass_VodPlayer(
     def downloadImage(self):
         self.loadDefaultImage()
         try:
-            os.remove(os.path.join(dir_tmp, "original.jpg"))
-            os.remove(os.path.join(dir_tmp, "temp.jpg"))
+            os.remove(os.path.join(dir_tmp, "cover.jpg"))
         except:
             pass
 
@@ -595,8 +657,9 @@ class XKlass_VodPlayer(
         except:
             pass
 
+        print("*** desc image ***", desc_image)
         if desc_image and desc_image != "n/A":
-            temp = os.path.join(dir_tmp, "temp.jpg")
+            temp = os.path.join(dir_tmp, "cover.jpg")
             try:
                 parsed = urlparse(desc_image)
                 domain = parsed.hostname
@@ -621,7 +684,7 @@ class XKlass_VodPlayer(
 
     def resizeImage(self, data=None):
         if self["cover"].instance:
-            preview = os.path.join(dir_tmp, "temp.jpg")
+            preview = os.path.join(dir_tmp, "cover.jpg")
 
             if screenwidth.width() == 2560:
                 width = 293
@@ -669,11 +732,6 @@ class XKlass_VodPlayer(
         except:
             pass
 
-        try:
-            self.session.nav.playService(eServiceReference(glob.currentPlayingServiceRefString))
-        except:
-            pass
-
         self.close()
 
     def toggleStreamType(self):
@@ -689,7 +747,7 @@ class XKlass_VodPlayer(
         except:
             pass
 
-        self.playStream(self.servicetype, self.streamurl, self.direct_source)
+        self.playStream(self.servicetype, self.streamurl)
 
     def nextARfunction(self):
         self.ar_id_player += 1

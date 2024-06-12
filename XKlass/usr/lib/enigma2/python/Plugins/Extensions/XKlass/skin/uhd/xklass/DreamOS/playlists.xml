@@ -1,0 +1,61 @@
+<screen name="XKlassPlaylists" position="0,0" size="3414,1920" backgroundColor="#0c145a" flags="wfNoBorder">
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/background.png" alphatest="off" position="0,0" size="3414,1920" zPosition="1"/>
+	<widget name="splash" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/splash.png" alphatest="on" position="0,0" size="3414,1920" zPosition="1000"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/logo.png" position="134,107" size="570,214" alphatest="blend" zPosition="1"/>
+	<widget source="Title" render="Label" position="160,475" size="854,128" font="xklassregular;86" foregroundColor="#ffffff" backgroundColor="#0c145a" valign="center" halign="left" noWrap="1" transparent="1" zPosition="2"/>
+	<widget source="global.CurrentTime" render="Label" position="2454,107" size="800,107" font="xklassregular;48" foregroundColor="#ffffff" backgroundColor="#71354a" valign="center" halign="right" transparent="1" zPosition="2">
+		<convert type="ClockToText">Format:%H:%M | %A %-d %b</convert>
+	</widget>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/divider.png" position="960,600" size="2294,8" alphatest="blend" zPosition="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/divider.png" position="960,728" size="2294,8" alphatest="blend" zPosition="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/divider.png" position="960,856" size="2294,8" alphatest="blend" zPosition="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/divider.png" position="960,984" size="2294,8" alphatest="blend" zPosition="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/divider.png" position="960,1112" size="2294,8" alphatest="blend" zPosition="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/divider.png" position="960,1240" size="2294,8" alphatest="blend" zPosition="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/divider.png" position="960,1368" size="2294,8" alphatest="blend" zPosition="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/divider.png" position="960,1496" size="2294,8" alphatest="blend" zPosition="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/divider.png" position="960,1624" size="2294,8" alphatest="blend" zPosition="1"/>
+	<widget source="playlists" render="Listbox" position="960,475" size="2294,1280" font="xklassregular;48" secondfont="xklassregular;48" foregroundColor="#ffffff" backgroundColor="#0c145a" foregroundColorSelected="#ffffff" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/list-selected-settings.png" backgroundPixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/blank.png" backgroundColorSelected="#494f83" itemHeight="128" scrollbarMode="showOnDemand" scrollbarSliderBorderWidth="1" scrollbarWidth="6" enableWrapAround="1" transparent="1" zPosition="4">
+		<convert type="TemplatedMultiContent">
+			{"template": [
+			
+			<!-- Authorised LED -->
+			MultiContentEntryPixmapAlphaBlend(pos = (32, 43), size = (42, 43), png = 5),
+			
+			<!-- name -->
+			MultiContentEntryText(pos = (107, 0), size = (960, 128), font=0, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_LEFT|RT_VALIGN_CENTER, text = 1),
+
+			<!-- Authorised -->
+			MultiContentEntryText(pos = (1067, 0), size = (480, 128), font=0, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text = 4),
+			
+			<!-- Active Conn -->
+			<!-- MultiContentEntryText(pos = (501-30, 48), size = (512, 54), font=1, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_RIGHT, text = 6), -->
+			
+			<!-- Active Conn Num -->
+			MultiContentEntryText(pos = (1547, 0), size = (224, 128), font=0, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text = 7),
+			
+			<!-- Max Conn -->
+			<!-- MultiContentEntryText(pos = (501-30, 75), size = (512, 54), font=1, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_RIGHT, text = 8), -->
+			
+			<!-- Max Conn Num --> 
+			MultiContentEntryText(pos = (1771, 0), size = (224, 128), font=0, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text = 9),
+			
+			<!-- Expires -->
+			MultiContentEntryText(pos = (2000, 0), size = (262, 128), font=1, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text = 3),
+			],
+			"fonts": [gFont("xklassbold", 48), gFont("xklassregular", 38)],
+			"itemHeight": 128,
+			"scrollbarMode": "showOnDemand"
+			}
+		</convert>
+	</widget>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/button-bg.png" position="0,1814" size="3414,107" alphatest="blend" zPosition="1"/>
+	<widget source="key_red" render="Pixmap" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/key_red.png" position="896,1834" size="68,68" alphatest="blend" zPosition="2"/>
+	<widget source="key_red" render="Label" position="982,1814" size="400,107" font="xklassregular;43" foregroundColor="#ffffff" backgroundColor="#0a3162" valign="center" transparent="1" noWrap="1" zPosition="2"/>
+	<widget source="key_green" render="Pixmap" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/key_green.png" position="1382,1834" size="68,68" alphatest="blend" zPosition="2"/>
+	<widget source="key_green" render="Label" position="1467,1814" size="400,107" font="xklassregular;43" foregroundColor="#ffffff" backgroundColor="#0a3162" valign="center" transparent="1" noWrap="1" zPosition="2"/>
+	<widget source="key_yellow" render="Pixmap" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/key_yellow.png" position="1866,1834" size="68,68" alphatest="blend" zPosition="2"/>
+	<widget source="key_yellow" render="Label" position="1951,1814" size="400,107" font="xklassregular;43" foregroundColor="#ffffff" backgroundColor="#0a3162" valign="center" transparent="1" noWrap="1" zPosition="2"/>
+	<widget source="key_blue" render="Pixmap" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/key_blue.png" position="2351,1834" size="68,68" alphatest="blend" zPosition="2"/>
+	<widget source="key_blue" render="Label" position="2436,1814" size="400,107" font="xklassregular;43" foregroundColor="#ffffff" backgroundColor="#0a3162" valign="center" transparent="1" noWrap="1" zPosition="2"/>
+</screen>

@@ -1,12 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# Standard library imports
 import os
 
-from . import _
-from .plugin import cfg, skin_directory
-from .xStaticText import StaticText
-
+# Enigma2 components
 from Components.ActionMap import ActionMap
 from Components.ConfigList import ConfigListScreen
 from Components.Pixmap import Pixmap
@@ -24,6 +22,11 @@ from Screens.LocationBox import LocationBox
 from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Tools.BoundFunction import boundFunction
+
+# Local application/library-specific imports
+from . import _
+from .plugin import cfg, skin_directory
+from .xStaticText import StaticText
 
 
 class ProtectedScreen:
@@ -54,7 +57,6 @@ class XKlass_Settings(ConfigListScreen, Screen, ProtectedScreen):
             ProtectedScreen.__init__(self)
 
         self.session = session
-
         skin_path = os.path.join(skin_directory, cfg.skin.value)
         skin = os.path.join(skin_path, "settings.xml")
         if os.path.exists("/var/lib/dpkg/status"):
@@ -142,13 +144,13 @@ class XKlass_Settings(ConfigListScreen, Screen, ProtectedScreen):
 
     def initConfig(self):
         self.cfg_skin = getConfigListEntry(_("Select skin"), cfg.skin)
+        self.cfg_useragent = getConfigListEntry(_("Select fake web user-agent"), cfg.useragent)
+
         self.cfg_location = getConfigListEntry(_("playlists.txt location") + _(" *Restart GUI Required"), cfg.location)
         self.cfg_epglocation = getConfigListEntry(_("EPG download location"), cfg.epglocation)
         self.cfg_downloadlocation = getConfigListEntry(_("VOD download folder"), cfg.downloadlocation)
         self.cfg_livetype = getConfigListEntry(_("Default LIVE stream type"), cfg.livetype)
         self.cfg_vodtype = getConfigListEntry(_("Default VOD/SERIES stream type"), cfg.vodtype)
-        self.cfg_livepreview = getConfigListEntry(_("Preview LIVE streams in mini tv"), cfg.livepreview)
-        self.cfg_stopstream = getConfigListEntry(_("Stop stream on back button"), cfg.stopstream)
         self.cfg_adult = getConfigListEntry(_("XKlass parental control"), cfg.adult)
         self.cfg_adultpin = getConfigListEntry(_("XKlass parental pin"), cfg.adultpin)
         self.cfg_main = getConfigListEntry(_("Show in main menu") + _(" *Restart GUI Required"), cfg.main)
@@ -157,8 +159,8 @@ class XKlass_Settings(ConfigListScreen, Screen, ProtectedScreen):
         self.cfg_catchupstart = getConfigListEntry(_("Margin before catchup (mins)"), cfg.catchupstart)
         self.cfg_catchupend = getConfigListEntry(_("Margin after catchup (mins)"), cfg.catchupend)
         self.cfg_subs = getConfigListEntry(_("Allow SubsSupport plugin in VOD"), cfg.subs)
-        self.cfg_skipplaylistsscreen = getConfigListEntry(_("Skip playlist selection screen if only 1 playlist"), cfg.skipplaylistsscreen)
         self.cfg_wakeup = getConfigListEntry(_("Automatic EPG download time") + _(" *Restart GUI Required"), cfg.wakeup)
+        self.cfg_introvideo = getConfigListEntry(_("Show intro video"), cfg.introvideo)
         self.cfg_channelpicons = getConfigListEntry(_("Show channel picons"), cfg.channelpicons)
         self.cfg_channelcovers = getConfigListEntry(_("Show Vod/Series posters"), cfg.channelcovers)
         self.cfg_infobarpicons = getConfigListEntry(_("Show infobar picons"), cfg.infobarpicons)
@@ -177,14 +179,12 @@ class XKlass_Settings(ConfigListScreen, Screen, ProtectedScreen):
     def createSetup(self):
         config_entries = [
             self.cfg_skin,
+            self.cfg_useragent,
             self.cfg_location,
             self.cfg_epglocation,
             self.cfg_downloadlocation,
-            self.cfg_skipplaylistsscreen,
             self.cfg_livetype,
             self.cfg_vodtype,
-            self.cfg_livepreview,
-            self.cfg_stopstream,
             self.cfg_wakeup,
             self.cfg_TMDB,
             self.cfg_TMDBLanguage2 if cfg.TMDB.value else None,
@@ -194,6 +194,7 @@ class XKlass_Settings(ConfigListScreen, Screen, ProtectedScreen):
             self.cfg_adultpin if cfg.adult.value else None,
             self.cfg_subs if os.path.isdir("/usr/lib/enigma2/python/Plugins/Extensions/SubsSupport") else None,
             self.cfg_main,
+            self.cfg_introvideo,
             self.cfg_channelpicons,
             self.cfg_channelcovers,
             self.cfg_infobarpicons,

@@ -3,15 +3,16 @@
 
 from __future__ import division
 
+# Standard library imports
 import base64
 import codecs
-from datetime import datetime, timedelta
+import json
+import math
 import os
 import re
 import time
-import json
-import requests
-import math
+from datetime import datetime, timedelta
+from itertools import cycle, islice
 
 try:
     from http.client import HTTPConnection
@@ -25,36 +26,35 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
+# Third-party imports
+import requests
 from PIL import Image, ImageFile, PngImagePlugin
-from itertools import cycle, islice
-
 from requests.adapters import HTTPAdapter, Retry
+from twisted.web.client import downloadPage
 
-try:
-    from twisted.web.client import downloadPage
-except ImportError:
-    downloadPage = None
-
+# Enigma2 components
 from Components.ActionMap import ActionMap
 from Components.Pixmap import Pixmap
 from Components.ProgressBar import ProgressBar
 from Components.Sources.List import List
-
 from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Screens.VirtualKeyBoard import VirtualKeyBoard
+
 from Tools.LoadPixmap import LoadPixmap
+from enigma import eTimer
 
-from enigma import eTimer, eServiceReference
 
+# Local application/library-specific imports
 from . import _
 from . import catchupplayer
 from . import xklass_globals as glob
-from .plugin import skin_directory, screenwidth, hdr, cfg, common_path, dir_tmp, downloads_json, pythonVer
+from .plugin import cfg, common_path, dir_tmp, playlists_json, downloads_json, pythonVer, screenwidth, skin_directory, hasConcurrent, hasMultiprocessing
+
 from .xStaticText import StaticText
 
 
-# https twisted client hack #
+# HTTPS twisted client hack
 try:
     from twisted.internet import ssl
     from twisted.internet._sslverify import ClientTLSOptions
@@ -124,14 +124,24 @@ Image.preinit = _mypreinit
 
 epgimporter = os.path.isdir("/usr/lib/enigma2/python/Plugins/Extensions/EPGImport")
 
+hdr = {'User-Agent': str(cfg.useragent.value)}
 
-class XKlass_Categories(Screen):
+
+class XKlass_Catchup_Categories(Screen):
     ALLOW_SUSPEND = True
 
-    def __init__(self, session):
+    def __init__(self, session, callfunc):
+        # print("*** catchup init ***")
         Screen.__init__(self, session)
         self.session = session
+
+        glob.session = session
         glob.categoryname = "catchup"
+
+        try:
+            self.closeChoiceBoxDialog()
+        except Exception as e:
+            print(e)
 
         self.skin_path = os.path.join(skin_directory, cfg.skin.value)
         skin = os.path.join(self.skin_path, "live_categories.xml")
@@ -142,8 +152,15 @@ class XKlass_Categories(Screen):
             self.skin = f.read()
 
         self.setup_title = _("Catch Up Categories")
-        self.main_title = _("Catch Up TV")
+
+        self.main_title = ("")
         self["main_title"] = StaticText(self.main_title)
+
+        self.screen_title = _("Catchup TV")
+        self["screen_title"] = StaticText(self.screen_title)
+
+        self.category = ("")
+        self["category"] = StaticText(self.category)
 
         self.main_list = []  # displayed list
         self["main_list"] = List(self.main_list, enableWrapAround=True)
@@ -176,7 +193,6 @@ class XKlass_Categories(Screen):
 
         self.searchString = ""
         self.filterresult = ""
-
         self.pin = False
 
         self.sortindex = 0
@@ -186,20 +202,7 @@ class XKlass_Categories(Screen):
 
         self.selectedlist = self["main_list"]
 
-        self.host = glob.active_playlist["playlist_info"]["host"]
-        self.username = glob.active_playlist["playlist_info"]["username"]
-        self.password = glob.active_playlist["playlist_info"]["password"]
-        self.output = glob.active_playlist["playlist_info"]["output"]
-        self.name = glob.active_playlist["playlist_info"]["name"]
-
-        self.player_api = glob.active_playlist["playlist_info"]["player_api"]
-
-        self.liveStreamsData = []
-
-        self.liveStreamsUrl = str(self.player_api) + "&action=get_live_streams"
-        self.simpledatatable = str(self.player_api) + "&action=get_simple_data_table&stream_id="
-
-        next_url = str(self.player_api) + "&action=get_live_categories"
+        self.original_active_playlist = glob.active_playlist
 
         # buttons / keys
         self["key_red"] = StaticText(_("Back"))
@@ -223,8 +226,8 @@ class XKlass_Categories(Screen):
             "channelUp": self.pageUp,
             "channelDown": self.pageDown,
             "0": self.reset,
-            "menu": self.showHiddenList,
-        }, -1)
+            "menu": self.showPopupMenu,
+        }, -2)
 
         self["channel_actions"] = ActionMap(["XKlassActions"], {
             "cancel": self.back,
@@ -242,24 +245,193 @@ class XKlass_Categories(Screen):
             "rec": self.downloadVideo,
             "5": self.downloadVideo,
             "0": self.reset,
-            "menu": self.showHiddenList,
-        }, -1)
+            "menu": self.showPopupMenu,
+        }, -2)
 
         self["channel_actions"].setEnabled(False)
 
-        glob.nextlist = []
-        glob.nextlist.append({"next_url": next_url, "index": 0, "level": self.level, "sort": self.sortText, "filter": ""})
+        self['menu_actions'] = ActionMap(["XKlassActions"], {
+            "cancel": self.closeChoiceBoxDialog,
+            "red": self.closeChoiceBoxDialog,
+            "menu": self.closeChoiceBoxDialog,
+        }, -2)
 
-        self.onFirstExecBegin.append(self.createSetup)
+        self["menu_actions"].setEnabled(False)
+
+        self["splash"] = Pixmap()
+        self["splash"].show()
+
+        self.initGlobals()
+
         self.onLayoutFinish.append(self.__layoutFinished)
+        self.onShow.append(self.refresh)
 
     def __layoutFinished(self):
         self.setTitle(self.setup_title)
 
+    def initGlobals(self):
+        self.host = glob.active_playlist["playlist_info"]["host"]
+        self.username = glob.active_playlist["playlist_info"]["username"]
+        self.password = glob.active_playlist["playlist_info"]["password"]
+        self.output = glob.active_playlist["playlist_info"]["output"]
+        self.name = glob.active_playlist["playlist_info"]["name"]
+        self.player_api = glob.active_playlist["playlist_info"]["player_api"]
+        self.liveStreamsData = []
+        # full_url = glob.active_playlist["playlist_info"]["full_url"]
+        self.p_live_categories_url = str(self.player_api) + "&action=get_live_categories"
+        self.p_vod_categories_url = str(self.player_api) + "&action=get_vod_categories"
+        self.p_series_categories_url = str(self.player_api) + "&action=get_series_categories"
+
+        self.liveStreamsUrl = str(self.player_api) + "&action=get_live_streams"
+        self.simpledatatable = str(self.player_api) + "&action=get_simple_data_table&stream_id="
+        if self.level == 1:
+            next_url = str(self.player_api) + "&action=get_live_categories"
+            glob.nextlist = []
+            glob.nextlist.append({"next_url": next_url, "index": 0, "level": self.level, "sort": self.sortText, "filter": ""})
+
+    def refresh(self):
+        if self.original_active_playlist != glob.active_playlist:
+            if self.level == 1:
+                self.reset()
+            if self.level == 2:
+                self.back()
+                self.reset()
+            glob.active_playlist["data"]["live_streams"] = []
+
+        self.initGlobals()
+
+        if self.original_active_playlist != glob.active_playlist:
+            self["category_actions"].setEnabled(True)
+            self["channel_actions"].setEnabled(False)
+            self["menu_actions"].setEnabled(False)
+            if not glob.active_playlist["player_info"]["showcatchup"]:
+                self.close()
+            else:
+                self.makeUrlList()
+        self.createSetup()
+
+    def makeUrlList(self):
+        self.url_list = []
+
+        player_api = str(glob.active_playlist["playlist_info"].get("player_api", ""))
+        full_url = str(glob.active_playlist["playlist_info"].get("full_url", ""))
+        domain = str(glob.active_playlist["playlist_info"].get("domain", ""))
+        username = str(glob.active_playlist["playlist_info"].get("username", ""))
+        password = str(glob.active_playlist["playlist_info"].get("password", ""))
+        if "get.php" in full_url and domain and username and password:
+            self.url_list.append([player_api, 0])
+            self.url_list.append([self.p_live_categories_url, 1])
+            self.url_list.append([self.p_vod_categories_url, 2])
+            self.url_list.append([self.p_series_categories_url, 3])
+
+        self.process_downloads()
+
+    def download_url(self, url):
+        import requests
+        index = url[1]
+        response = ""
+
+        retries = Retry(total=2, backoff_factor=1)
+        adapter = HTTPAdapter(max_retries=retries)
+
+        with requests.Session() as http:
+            http.mount("http://", adapter)
+            http.mount("https://", adapter)
+
+            try:
+                r = http.get(url[0], headers=hdr, timeout=(6, 10), verify=False)
+                r.raise_for_status()
+
+                if r.status_code == requests.codes.ok:
+                    try:
+                        response = r.json()
+                    except ValueError as e:
+                        print("Error decoding JSON:", e, url)
+
+            except Exception as e:
+                print("Request error:", e)
+
+        return index, response
+
+    def process_downloads(self):
+        threads = min(len(self.url_list), 10)
+
+        self.retry = 0
+        glob.active_playlist["data"]["live_categories"] = []
+        glob.active_playlist["data"]["vod_categories"] = []
+        glob.active_playlist["data"]["series_categories"] = []
+
+        if hasConcurrent or hasMultiprocessing:
+            if hasConcurrent:
+                try:
+                    from concurrent.futures import ThreadPoolExecutor
+                    with ThreadPoolExecutor(max_workers=threads) as executor:
+                        results = list(executor.map(self.download_url, self.url_list))
+                except Exception as e:
+                    print("Concurrent execution error:", e)
+
+            elif hasMultiprocessing:
+                try:
+                    from multiprocessing.pool import ThreadPool
+                    pool = ThreadPool(threads)
+                    results = pool.imap_unordered(self.download_url, self.url_list)
+                    pool.close()
+                    pool.join()
+                except Exception as e:
+                    print("Multiprocessing execution error:", e)
+
+            for index, response in results:
+                if response:
+                    if index == 0:
+                        if "user_info" in response:
+                            glob.active_playlist.update(response)
+                        else:
+                            glob.active_playlist["user_info"] = {}
+                    if index == 1:
+                        glob.active_playlist["data"]["live_categories"] = response
+                    if index == 2:
+                        glob.active_playlist["data"]["vod_categories"] = response
+                    if index == 3:
+                        glob.active_playlist["data"]["series_categories"] = response
+
+        else:
+            # print("*** trying sequential ***")
+            for url in self.url_list:
+                result = self.download_url(url)
+                index = result[0]
+                response = result[1]
+                if response:
+                    if index == 0:
+                        if "user_info" in response:
+                            glob.active_playlist.update(response)
+                        else:
+                            glob.active_playlist["user_info"] = {}
+                    if index == 1:
+                        glob.active_playlist["data"]["live_categories"] = response
+                    if index == 2:
+                        glob.active_playlist["data"]["vod_categories"] = response
+                    if index == 3:
+                        glob.active_playlist["data"]["series_categories"] = response
+
+        glob.active_playlist["data"]["data_downloaded"] = True
+        glob.active_playlist["data"]["live_streams"] = []
+        self.writeJsonFile()
+
+    def writeJsonFile(self):
+        with open(playlists_json, "r") as f:
+            playlists_all = json.load(f)
+
+        playlists_all[glob.current_selection] = glob.active_playlist
+
+        with open(playlists_json, "w") as f:
+            json.dump(playlists_all, f)
+
     def createSetup(self, data=None):
+        # print("*** createSetup ***")
+        self["splash"].hide()
         self["x_title"].setText("")
         self["x_description"].setText("")
-
+        self["category"].setText("{}".format(glob.current_category))
         if self.level == 1:
             self.getCategories()
         else:
@@ -268,12 +440,13 @@ class XKlass_Categories(Screen):
         self.buildLists()
 
     def buildLists(self):
+        # print("*** buildLists ***")
         if self.level == 1:
             self.buildList1()
         else:
             self.buildList2()
 
-        self.buttons()
+        self.resetButtons()
         self.selectionChanged()
 
     def getCategories(self):
@@ -285,10 +458,11 @@ class XKlass_Categories(Screen):
 
         currentPlaylist = glob.active_playlist
         currentCategoryList = currentPlaylist.get("data", {}).get("live_categories", [])
-        currentHidden = set(currentPlaylist.get("player_info", {}).get("livehidden", []))
+        currentHidden = set(currentPlaylist.get("player_info", {}).get("catchuphidden", []))
 
         hidden = "0" in currentHidden
 
+        # print("**** livestreamsurl ***", self.liveStreamsUrl)
         if not self.liveStreamsData:
             self.liveStreamsData = self.downloadApiData(self.liveStreamsUrl)
 
@@ -297,7 +471,7 @@ class XKlass_Categories(Screen):
             if "tv_archive" in x and str(x["tv_archive"]) == "1"
             and "tv_archive_duration" in x
             and str(x["tv_archive_duration"]) != "0"
-            and x["category_id"] not in glob.active_playlist["player_info"]["livehidden"]
+            and x["category_id"] not in glob.active_playlist["player_info"]["catchuphidden"]
         ]
 
         if archivelist:
@@ -324,52 +498,57 @@ class XKlass_Categories(Screen):
         glob.originalChannelList1 = self.list1[:]
 
     def getLevel2(self):
+        # print("*** getLevel2 ***")
         response = self.downloadApiData(glob.nextlist[-1]["next_url"])
 
         index = 0
+
         self.list2 = []
-
         if response:
-            catchup_hidden_channels = set(glob.active_playlist["player_info"]["catchupchannelshidden"])
+            for index, channel in enumerate(response):
 
-            for item in response:
-                if item.get("tv_archive") == 1 and item.get("tv_archive_duration") != "0" and item.get("tv_archive_duration") != 0:
-                    name = str(item.get("name", ""))
+                if channel.get("tv_archive") == 0 or channel.get("tv_archive") == "0" or channel.get("tv_archive_duration") == "0" or channel.get("tv_archive_duration") == 0:
+                    continue
 
-                    if not name or name == "None":
-                        continue
+                name = str(channel.get("name", ""))
 
-                    stream_id = item.get("stream_id", "")
-                    if not stream_id:
-                        continue
+                if not name or name == "None":
+                    continue
 
-                    stream_icon = str(item.get("stream_icon", ""))
+                if name and '\" ' in name:
+                    parts = name.split('\" ', 1)
+                    if len(parts) > 1:
+                        name = parts[0]
 
-                    if stream_icon and stream_icon.startswith("http"):
-                        if stream_icon.startswith("https://vignette.wikia.nocookie.net/tvfanon6528"):
-                            if "scale-to-width-down" not in stream_icon:
-                                stream_icon = str(stream_icon) + "/revision/latest/scale-to-width-down/220"
-                    else:
-                        stream_icon = ""
+                stream_id = channel.get("stream_id", "")
+                if not stream_id:
+                    continue
 
-                    epg_channel_id = str(item.get("epg_channel_id", ""))
-                    if epg_channel_id and "&" in epg_channel_id:
-                        epg_channel_id = epg_channel_id.replace("&", "&amp;")
+                hidden = str(stream_id) in glob.active_playlist["player_info"]["catchupchannelshidden"]
 
-                    added = str(item.get("added", ""))
-                    hidden = str(stream_id) in catchup_hidden_channels
+                stream_icon = str(channel.get("stream_icon", ""))
 
-                    if stream_id:
-                        next_url = "{}/live/{}/{}/{}.{}".format(self.host, self.username, self.password, stream_id, self.output)
-                        self.list2.append([
-                            index, str(name), str(stream_id), str(stream_icon), str(epg_channel_id), str(added),
-                            str(next_url), "", "", "", "", "", "", hidden
-                        ])
-                        index += 1
+                if stream_icon and stream_icon.startswith("http"):
+                    if stream_icon.startswith("https://vignette.wikia.nocookie.net/tvfanon6528"):
+                        if "scale-to-width-down" not in stream_icon:
+                            stream_icon = str(stream_icon) + "/revision/latest/scale-to-width-down/220"
+                else:
+                    stream_icon = ""
 
-            glob.originalChannelList2 = self.list2[:]
+                epg_channel_id = str(channel.get("epg_channel_id", ""))
+                if epg_channel_id and "&" in epg_channel_id:
+                    epg_channel_id = epg_channel_id.replace("&", "&amp;")
+
+                added = str(channel.get("added", ""))
+
+                next_url = "{}/live/{}/{}/{}.{}".format(self.host, self.username, self.password, stream_id, self.output)
+
+                self.list2.append([index, str(name), str(stream_id), str(stream_icon), str(epg_channel_id), str(added), str(next_url), "", "", "", "", "", "", hidden])
+
+        glob.originalChannelList2 = self.list2[:]
 
     def downloadApiData(self, url):
+        # print("**** downloadApiData ****")
         try:
             retries = Retry(total=3, backoff_factor=1)
             adapter = HTTPAdapter(max_retries=retries)
@@ -377,7 +556,7 @@ class XKlass_Categories(Screen):
             http.mount("http://", adapter)
             http.mount("https://", adapter)
 
-            response = http.get(url, headers=hdr, timeout=(10, 30), verify=False)
+            response = http.get(url, headers=hdr, timeout=(10), verify=False)
             response.raise_for_status()
 
             if response.status_code == requests.codes.ok:
@@ -392,6 +571,7 @@ class XKlass_Categories(Screen):
         self.session.openWithCallback(self.back, MessageBox, _("Server error or invalid link."), MessageBox.TYPE_ERROR, timeout=3)
 
     def buildList1(self):
+        # print("*** buildlist1 ***")
         self["picon"].hide()
 
         if self["key_blue"].getText() != _("Reset Search"):
@@ -407,17 +587,16 @@ class XKlass_Categories(Screen):
             self["main_list"].setIndex(glob.nextlist[-1]["index"])
 
     def buildList2(self):
-        self.main_list = [
-            buildCatchupStreamList(x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[13])
-            for x in self.list2 if not x[13]
-        ]
+        # print("*** buildlist2 ***")
+        self.main_list = [buildCatchupStreamList(x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[13]) for x in self.list2 if not x[13]]
         self["main_list"].setList(self.main_list)
         self["picon"].show()
 
         if self["main_list"].getCurrent() and glob.nextlist[-1]["index"] != 0:
             self["main_list"].setIndex(glob.nextlist[-1]["index"])
 
-    def buttons(self):
+    def resetButtons(self):
+        # print("*** buttons ***")
         if glob.nextlist[-1]["filter"]:
             self["key_yellow"].setText("")
             self["key_blue"].setText(_("Reset Search"))
@@ -437,17 +616,14 @@ class XKlass_Categories(Screen):
                 self["key_menu"].setText("+/-")
 
     def stopStream(self):
-        current_playing_ref = glob.currentPlayingServiceRefString
-        new_playing_ref = glob.newPlayingServiceRefString
+        # print("*** stop stream ***")
 
-        if current_playing_ref and new_playing_ref and current_playing_ref != new_playing_ref:
-            currently_playing_service = self.session.nav.getCurrentlyPlayingServiceReference()
-            if currently_playing_service:
-                self.session.nav.stopService()
-            self.session.nav.playService(eServiceReference(current_playing_ref))
-            glob.newPlayingServiceRefString = current_playing_ref
+        currently_playing_service = self.session.nav.getCurrentlyPlayingServiceReference()
+        if currently_playing_service:
+            self.session.nav.stopService()
 
     def selectionChanged(self):
+        # print("*** selectionchanged ***")
         current_item = self["main_list"].getCurrent()
         if current_item:
             channel_title = current_item[0]
@@ -462,8 +638,7 @@ class XKlass_Categories(Screen):
 
             self["page"].setText(_("Page: ") + "{}/{}".format(page, page_all))
             self["listposition"].setText("{}/{}".format(position, position_all))
-            self["main_title"].setText("{}: {}".format(self.main_title, channel_title))
-
+            self["main_title"].setText("{}".format(channel_title))
             self.loadBlankImage()
 
             if self.level == 2:
@@ -491,6 +666,7 @@ class XKlass_Categories(Screen):
             self["key_blue"].setText("")
 
     def downloadImage(self):
+        # print("*** downloadimage ***")
         if self["main_list"].getCurrent():
             try:
                 for filename in ["original.png", "temp.png"]:
@@ -528,14 +704,17 @@ class XKlass_Categories(Screen):
                 self.loadDefaultImage()
 
     def loadBlankImage(self, data=None):
+        # print("*** loadblankimage ***")
         if self["picon"].instance:
             self["picon"].instance.setPixmapFromFile(os.path.join(common_path, "picon_blank.png"))
 
     def loadDefaultImage(self, data=None):
+        # print("*** loaddefaultimage ***")
         if self["picon"].instance:
             self["picon"].instance.setPixmapFromFile(os.path.join(common_path, "picon.png"))
 
     def resizeImage(self, data=None):
+        # print("*** resizeImage ***")
         current_item = self["main_list"].getCurrent()
         if current_item:
             original = os.path.join(dir_tmp, "temp.png")
@@ -566,6 +745,7 @@ class XKlass_Categories(Screen):
                     bg = Image.new("RGBA", size, (255, 255, 255, 0))
 
                     # Calculate position for centering
+
                     left = (size[0] - im.size[0]) // 2
                     top = (size[1] - im.size[1]) // 2
 
@@ -586,41 +766,43 @@ class XKlass_Categories(Screen):
                 self.loadDefaultImage()
 
     def goUp(self):
+        # print("*** goup ***")
         instance = self.selectedlist.master.master.instance
         instance.moveSelection(instance.moveUp)
         self.selectionChanged()
 
     def goDown(self):
+        # print("*** godown ***")
         instance = self.selectedlist.master.master.instance
         instance.moveSelection(instance.moveDown)
         self.selectionChanged()
 
     def pageUp(self):
+        # print("*** pageup ***")
         instance = self.selectedlist.master.master.instance
         instance.moveSelection(instance.pageUp)
         self.selectionChanged()
 
     def pageDown(self):
+        # print("*** pagedown ***")
         instance = self.selectedlist.master.master.instance
         instance.moveSelection(instance.pageDown)
         self.selectionChanged()
 
     # button 0
     def reset(self):
+        # print("*** reset ***")
         self.selectedlist.setIndex(0)
         self.selectionChanged()
 
     def sort(self):
-        if self.selectedlist == self["epg_short_list"]:
-            self.reverse()
-            return
+        # print("*** sort ***")
 
         current_sort = self["key_yellow"].getText()
         if not current_sort or current_sort == _("Reverse"):
             return
 
         activelist = self.list1 if self.level == 1 else self.list2
-        activeoriginal = glob.originalChannelList1 if self.level == 1 else glob.originalChannelList2
 
         sortlist = [_("Sort: A-Z"), _("Sort: Z-A")]
         if self.level == 1:
@@ -647,7 +829,7 @@ class XKlass_Categories(Screen):
                 activelist.sort(key=lambda x: x[5], reverse=True)
 
         elif current_sort == _("Sort: Original"):
-            activelist[:] = activeoriginal
+            activelist.sort(key=lambda x: x[0], reverse=False)
 
         next_sort_type = next(islice(cycle(sortlist), self.sortindex + 1, None))
         self.sortText = str(next_sort_type)
@@ -663,17 +845,19 @@ class XKlass_Categories(Screen):
         self.buildLists()
 
     def search(self, result=None):
+        # print("*** search ***")
         if not self["key_blue"].getText():
             return
 
         current_filter = self["key_blue"].getText()
 
-        if current_filter == (_("Reset Search")):
+        if current_filter == _("Reset Search"):
             self.resetSearch()
         else:
             self.session.openWithCallback(self.filterChannels, VirtualKeyBoard, title=_("Filter this category..."), text=self.searchString)
 
     def filterChannels(self, result=None):
+        # print("*** filterchannels ***")
         activelist = []
         if result:
             self.filterresult = result
@@ -699,6 +883,7 @@ class XKlass_Categories(Screen):
                 self.buildLists()
 
     def resetSearch(self):
+        # print("*** resetsearch ***")
         self["key_blue"].setText(_("Search"))
         self["key_yellow"].setText(self.sortText)
 
@@ -715,6 +900,7 @@ class XKlass_Categories(Screen):
         self.buildLists()
 
     def pinEntered(self, result=None):
+        # print("*** pinentered ***")
         if not result:
             self.pin = False
             self.session.open(MessageBox, _("Incorrect pin code."), type=MessageBox.TYPE_ERROR, timeout=5)
@@ -730,6 +916,7 @@ class XKlass_Categories(Screen):
             return
 
     def parentalCheck(self):
+        # print("*** parentalcheck ***")
         self.pin = True
         nowtime = int(time.mktime(datetime.now().timetuple())) if pythonVer == 2 else int(datetime.timestamp(datetime.now()))
 
@@ -753,6 +940,7 @@ class XKlass_Categories(Screen):
             self.next()
 
     def next(self):
+        # print("*** next ***")
         if self["main_list"].getCurrent():
             current_index = self["main_list"].getIndex()
             glob.nextlist[-1]["index"] = current_index
@@ -761,6 +949,7 @@ class XKlass_Categories(Screen):
 
             if self.level == 1:
                 if self.list1:
+                    glob.current_category = self["main_list"].getCurrent()[0]
                     category_id = self["main_list"].getCurrent()[3]
                     next_url = "{0}&action=get_live_streams&category_id={1}".format(self.player_api, category_id) if category_id != "0" else "{0}&action=get_live_streams".format(self.player_api)
                     self.level += 1
@@ -768,7 +957,9 @@ class XKlass_Categories(Screen):
                     self["category_actions"].setEnabled(False)
                     self["channel_actions"].setEnabled(True)
                     self["key_yellow"].setText(_("Sort: A-Z"))
+
                     glob.nextlist.append({"next_url": next_url, "index": 0, "level": self.level, "sort": self["key_yellow"].getText(), "filter": ""})
+
                     self.createSetup()
                 else:
                     self.createSetup()
@@ -776,17 +967,20 @@ class XKlass_Categories(Screen):
                 if self.list2:
                     if self.selectedlist == self["main_list"]:
                         self.catchupEPG()
-                        self.buttons()
+                        self.resetButtons()
                     else:
                         self.playCatchup()
                 else:
                     self.createSetup()
 
     def setIndex(self, data=None):
-        self["main_list"].setIndex(glob.currentchannellistindex)
-        self.createSetup()
+        # print("*** setindex ***")
+        if self["main_list"].getCurrent():
+            self["main_list"].setIndex(glob.currentchannellistindex)
+            self.createSetup()
 
     def back(self, data=None):
+        # print("*** back ***")
         self.hideEPG()
 
         if self.selectedlist == self["epg_short_list"]:
@@ -796,36 +990,35 @@ class XKlass_Categories(Screen):
             main_instance = self["main_list"].master.master.instance
             main_instance.setSelectionEnable(1)
             self.selectedlist = self["main_list"]
-            self.buttons()
+            self.resetButtons()
         else:
             del glob.nextlist[-1]
+            glob.current_category = None
+            self["category"].setText("")
 
             if not glob.nextlist:
                 self.stopStream()
                 self.close()
             else:
+                self["x_title"].setText("")
+                self["x_description"].setText("")
                 self.stopStream()
                 self.level -= 1
                 self.createSetup()
 
-    def showHiddenList(self):
-        if self["key_menu"].getText():
-            from . import hidden
-
-            current_list = self.prelist + self.list1 if self.level == 1 else self.list2
-
-            if current_list and self["main_list"].getCurrent():
-                self.session.openWithCallback(self.createSetup, hidden.XKlass_HiddenCategories, "catchup", current_list, self.level)
-
     def hideEPG(self):
+        # print("*** hideEPG ***")
         self["picon"].hide()
         self["epg_bg"].hide()
         self["x_title"].setText("")
         self["x_description"].setText("")
+        self["progress"].hide()
 
     def showEPG(self):
+        # print("*** showEPG ***")
         self["picon"].show()
         self["epg_bg"].show()
+        self["progress"].show()
 
     def displayShortEPG(self):
         current_item = self["epg_short_list"].getCurrent()
@@ -1054,6 +1247,38 @@ class XKlass_Categories(Screen):
     def reverse(self):
         self.epgshortlist.reverse()
         self["epg_short_list"].setList(self.epgshortlist)
+
+    def showChoiceBoxDialog(self, Answer=None):
+        self["channel_actions"].setEnabled(False)
+        self["category_actions"].setEnabled(False)
+        glob.ChoiceBoxDialog['dialogactions'].execBegin()
+        glob.ChoiceBoxDialog.show()
+        self["menu_actions"].setEnabled(True)
+
+    def closeChoiceBoxDialog(self, Answer=None):
+        if glob.ChoiceBoxDialog:
+            self["menu_actions"].setEnabled(False)
+            glob.ChoiceBoxDialog.hide()
+            glob.ChoiceBoxDialog['dialogactions'].execEnd()
+            self.session.deleteDialog(glob.ChoiceBoxDialog)
+
+        if self.level == 1:
+            self["category_actions"].setEnabled(True)
+        if self.level == 2:
+            self["channel_actions"].setEnabled(True)
+
+    def showPopupMenu(self):
+        from . import channelmenu
+        glob.current_list = self.prelist + self.list1 if self.level == 1 else self.list2
+        glob.current_level = self.level
+        glob.current_screen = "catchup"
+        if glob.current_list:
+            glob.current_list = self.prelist + self.list1 if self.level == 1 else self.list2
+            glob.current_level = self.level
+            glob.current_screen = "catchup"
+
+        glob.ChoiceBoxDialog = self.session.instantiateDialog(channelmenu.XKlass_ChannelMenu)
+        self.showChoiceBoxDialog()
 
 
 def buildCategoryList(index, title, category_id, hidden):

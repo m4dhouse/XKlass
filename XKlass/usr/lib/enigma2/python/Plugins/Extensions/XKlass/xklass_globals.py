@@ -19,3 +19,7 @@ adultChannel = False
 categoryname = None
 ChoiceBoxDialog = None
 session = None
+current_category = ""
+current_list = None
+current_level = None
+current_screen = None

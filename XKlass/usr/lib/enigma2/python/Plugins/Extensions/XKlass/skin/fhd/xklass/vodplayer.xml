@@ -13,7 +13,7 @@
 	<eLabel position="280,894" size="1,156" backgroundColor="#fffffff" zPosition="1"/>
 	<!-- right divider -->
 	<eLabel position="1512,894" size="1,156" backgroundColor="#fffffff" zPosition="1"/>
-	<widget source="session.CurrentService" render="Progress" position="321,1002" size="1143,12" borderWidth="1" borderColor="#ffffff" foregroundColor="#091153" backgroundColor="#1a000000" zPosition="3">
+	<widget source="session.CurrentService" render="Progress" position="321,1002" size="1143,12" borderWidth="1" borderColor="#ffffff" foregroundColor="#57ffff" backgroundColor="#494f83" zPosition="3">
 		<convert type="XKlassServicePosition">Position</convert>
 	</widget>
 	<widget source="session.CurrentService" render="Label" position="321,956" size="900,48" font="xklassregular;30" noWrap="1" foregroundColor="#ffffff" backgroundColor="#40000000" halign="left" transparent="1" zPosition="3">

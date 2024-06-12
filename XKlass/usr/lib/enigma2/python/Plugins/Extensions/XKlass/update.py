@@ -1,23 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# Standard library imports
 from __future__ import division
-
 import calendar
 import json
 import os
-import requests
 import time
-
 from time import time as rtime
 from xml.etree.cElementTree import iterparse
-
-import twisted.python.runtime
-from twisted.web.client import downloadPage
-from . import xklass_globals as glob
-from .plugin import playlists_json, pythonVer, cfg, hdr
-
-from requests.adapters import HTTPAdapter, Retry
 
 try:
     from urlparse import urlparse
@@ -30,6 +21,16 @@ try:
 except ImportError:
     from httplib import HTTPConnection
     HTTPConnection.debuglevel = 0
+
+# Third-party imports
+import requests
+from requests.adapters import HTTPAdapter, Retry
+import twisted.python.runtime
+from twisted.web.client import downloadPage
+
+# Local application/library-specific imports
+from . import xklass_globals as glob
+from .plugin import playlists_json, pythonVer, cfg
 
 # https twisted client hack #
 sslverify = False
@@ -82,6 +83,9 @@ def get_time_utc(timestring, fdateparse):
     except Exception as e:
         print("[XMLTVConverter] get_time_utc error:", e)
         return 0
+
+
+hdr = {'User-Agent': str(cfg.useragent.value)}
 
 
 class XKlass_Update:

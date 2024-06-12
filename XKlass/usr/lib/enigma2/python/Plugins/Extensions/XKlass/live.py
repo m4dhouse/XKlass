@@ -3,18 +3,17 @@
 
 from __future__ import division
 
+# Standard library imports
 import base64
 import codecs
-from datetime import datetime, timedelta
-
+import json
+import math
 import os
 import re
-
 import tempfile
 import time
-import json
-import requests
-import math
+from datetime import datetime, timedelta
+from itertools import cycle, islice
 
 try:
     from http.client import HTTPConnection
@@ -28,38 +27,39 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
+try:
+    from xml.dom import minidom
+except ImportError:
+    pass
+
+# Third-party imports
+import requests
 from PIL import Image, ImageFile, PngImagePlugin
-from itertools import cycle, islice
 from requests.adapters import HTTPAdapter, Retry
 from twisted.web.client import downloadPage
 
+# Enigma2 components
 from Components.ActionMap import ActionMap
 from Components.Pixmap import Pixmap
 from Components.ProgressBar import ProgressBar
 from Components.Sources.List import List
-from Components.config import ConfigClock, NoSave, ConfigText
+from Components.config import ConfigClock, ConfigText, NoSave
 from RecordTimer import RecordTimerEntry
 from Screens.MessageBox import MessageBox
 from Screens.Screen import Screen
 from Screens.VirtualKeyBoard import VirtualKeyBoard
 from ServiceReference import ServiceReference
 from Tools.LoadPixmap import LoadPixmap
-from enigma import eTimer, eServiceReference, eEPGCache
+from enigma import eEPGCache, eServiceReference, eTimer
 
+# Local application/library-specific imports
 from . import _
-from .import liveplayer
+from . import liveplayer
 from . import xklass_globals as glob
-
-from .plugin import skin_directory, screenwidth, hdr, cfg, common_path, dir_tmp, playlists_json, pythonVer
+from .plugin import cfg, common_path, dir_tmp, playlists_json, pythonVer, screenwidth, skin_directory, hasConcurrent, hasMultiprocessing
 from .xStaticText import StaticText
 
-try:
-    from xml.dom import minidom
-except:
-    pass
-
-
-# https twisted client hack #
+# HTTPS twisted client hack
 try:
     from twisted.internet import ssl
     from twisted.internet._sslverify import ClientTLSOptions
@@ -129,14 +129,18 @@ Image.preinit = _mypreinit
 
 epgimporter = os.path.isdir("/usr/lib/enigma2/python/Plugins/Extensions/EPGImport")
 
+hdr = {'User-Agent': str(cfg.useragent.value)}
 
-class XKlass_Categories(Screen):
+
+class XKlass_Live_Categories(Screen):
     ALLOW_SUSPEND = True
 
-    def __init__(self, session):
-        # print("*** init ***")
+    def __init__(self, session, callfunc):
+        # print("*** live init ***")
         Screen.__init__(self, session)
         self.session = session
+        self.callfunc = callfunc
+
         glob.session = session
         glob.categoryname = "live"
 
@@ -149,9 +153,15 @@ class XKlass_Categories(Screen):
             self.skin = f.read()
 
         self.setup_title = _("Live Categories")
-        self.main_title = _("Live Streams")
 
+        self.main_title = ("")
         self["main_title"] = StaticText(self.main_title)
+
+        self.screen_title = _("Live TV")
+        self["screen_title"] = StaticText(self.screen_title)
+
+        self.category = ("")
+        self["category"] = StaticText(self.category)
 
         self.main_list = []  # displayed list
         self["main_list"] = List(self.main_list, enableWrapAround=True)
@@ -186,10 +196,6 @@ class XKlass_Categories(Screen):
         self["listposition"] = StaticText("")
         self.itemsperpage = 10
 
-        # self.lastviewed_url = ""
-        # self.lastviewed_id = ""
-        # self.lastviewed_index = 0
-
         self.searchString = ""
         self.filterresult = ""
 
@@ -207,29 +213,7 @@ class XKlass_Categories(Screen):
 
         self.selectedlist = self["main_list"]
 
-        self.host = glob.active_playlist["playlist_info"]["host"]
-        self.username = glob.active_playlist["playlist_info"]["username"]
-        self.password = glob.active_playlist["playlist_info"]["password"]
-        self.output = glob.active_playlist["playlist_info"]["output"]
-        self.name = glob.active_playlist["playlist_info"]["name"]
-
-        self.player_api = glob.active_playlist["playlist_info"]["player_api"]
-
-        self.liveStreamsData = []
-
-        next_url = str(self.player_api) + "&action=get_live_categories"
-
-        full_url = glob.active_playlist["playlist_info"]["full_url"]
-
-        self.unique_ref = 0
-
-        for j in str(full_url):
-            value = ord(j)
-            self.unique_ref += value
-
-        epglocation = str(cfg.epglocation.value)
-        self.epgfolder = os.path.join(epglocation, str(self.name))
-        self.epgjsonfile = os.path.join(self.epgfolder, "epg.json")
+        self.original_active_playlist = glob.active_playlist
 
         # buttons / keys
         self["key_red"] = StaticText(_("Back"))
@@ -254,7 +238,7 @@ class XKlass_Categories(Screen):
             "channelDown": self.pageDown,
             "0": self.reset,
             "menu": self.showPopupMenu,
-        }, -1)
+        }, -2)
 
         self["channel_actions"] = ActionMap(["XKlassActions"], {
             "cancel": self.back,
@@ -284,35 +268,208 @@ class XKlass_Categories(Screen):
             "7": self.epgminus,
             "8": self.epgreset,
             "9": self.epgplus,
-        }, -1)
+        }, -2)
 
         self["channel_actions"].setEnabled(False)
 
-        self['dialogactions'] = ActionMap(['XKlassActions'], {
-            "red": self.d_quit,
-            "cancel": self.d_quit,
-            "green": self.d_next,
-            "ok": self.d_next,
-            "up": self.d_up,
-            "down": self.d_down,
-        }, -1)
+        self['menu_actions'] = ActionMap(["XKlassActions"], {
+            "cancel": self.closeChoiceBoxDialog,
+            "red": self.closeChoiceBoxDialog,
+            "menu": self.closeChoiceBoxDialog,
+        }, -2)
 
-        self["dialogactions"].setEnabled(False)
+        self["menu_actions"].setEnabled(False)
 
-        glob.channelMenuDialog = None
-        glob.nextlist = []
-        glob.nextlist.append({"next_url": next_url, "index": 0, "level": self.level, "sort": self.sortText, "filter": ""})
+        self["splash"] = Pixmap()
+        self["splash"].show()
 
-        self.onFirstExecBegin.append(self.createSetup)
+        try:
+            self.closeChoiceBoxDialog()
+        except Exception as e:
+            print(e)
+
+        self.initGlobals()
+
         self.onLayoutFinish.append(self.__layoutFinished)
+        self.onShow.append(self.refresh)
 
     def __layoutFinished(self):
         self.setTitle(self.setup_title)
 
+    def initGlobals(self):
+        self.host = glob.active_playlist["playlist_info"]["host"]
+        self.username = glob.active_playlist["playlist_info"]["username"]
+        self.password = glob.active_playlist["playlist_info"]["password"]
+        self.output = glob.active_playlist["playlist_info"]["output"]
+        self.name = glob.active_playlist["playlist_info"]["name"]
+        self.player_api = glob.active_playlist["playlist_info"]["player_api"]
+        self.liveStreamsData = []
+        full_url = glob.active_playlist["playlist_info"]["full_url"]
+
+        self.p_live_categories_url = str(self.player_api) + "&action=get_live_categories"
+        self.p_vod_categories_url = str(self.player_api) + "&action=get_vod_categories"
+        self.p_series_categories_url = str(self.player_api) + "&action=get_series_categories"
+
+        epglocation = str(cfg.epglocation.value)
+        self.epgfolder = os.path.join(epglocation, str(self.name))
+        self.epgjsonfile = os.path.join(self.epgfolder, "epg.json")
+
+        self.unique_ref = 0
+
+        for j in str(full_url):
+            value = ord(j)
+            self.unique_ref += value
+
+        if self.level == 1:
+            next_url = str(self.player_api) + "&action=get_live_categories"
+            glob.nextlist = []
+            glob.nextlist.append({"next_url": next_url, "index": 0, "level": self.level, "sort": self.sortText, "filter": ""})
+
+    def refresh(self):
+        if self.original_active_playlist != glob.active_playlist:
+            if self.level == 1:
+                self.reset()
+            if self.level == 2:
+                self.back()
+                self.reset()
+            glob.active_playlist["data"]["live_streams"] = []
+
+        self.initGlobals()
+
+        if self.original_active_playlist != glob.active_playlist:
+            self["category_actions"].setEnabled(True)
+            self["channel_actions"].setEnabled(False)
+            self["menu_actions"].setEnabled(False)
+            if not glob.active_playlist["player_info"]["showlive"]:
+                self.close()
+            else:
+                self.makeUrlList()
+
+        self.xmltvdownloaded = False
+        self.createSetup()
+
+    def makeUrlList(self):
+        self.url_list = []
+
+        player_api = str(glob.active_playlist["playlist_info"].get("player_api", ""))
+        full_url = str(glob.active_playlist["playlist_info"].get("full_url", ""))
+        domain = str(glob.active_playlist["playlist_info"].get("domain", ""))
+        username = str(glob.active_playlist["playlist_info"].get("username", ""))
+        password = str(glob.active_playlist["playlist_info"].get("password", ""))
+        if "get.php" in full_url and domain and username and password:
+            self.url_list.append([player_api, 0])
+            self.url_list.append([self.p_live_categories_url, 1])
+            self.url_list.append([self.p_vod_categories_url, 2])
+            self.url_list.append([self.p_series_categories_url, 3])
+
+        self.process_downloads()
+
+    def download_url(self, url):
+        import requests
+        index = url[1]
+        response = ""
+
+        retries = Retry(total=2, backoff_factor=1)
+        adapter = HTTPAdapter(max_retries=retries)
+
+        with requests.Session() as http:
+            http.mount("http://", adapter)
+            http.mount("https://", adapter)
+
+            try:
+                r = http.get(url[0], headers=hdr, timeout=(6, 10), verify=False)
+                r.raise_for_status()
+
+                if r.status_code == requests.codes.ok:
+                    try:
+                        response = r.json()
+                    except ValueError as e:
+                        print("Error decoding JSON:", e, url)
+
+            except Exception as e:
+                print("Request error:", e)
+
+        return index, response
+
+    def process_downloads(self):
+        threads = min(len(self.url_list), 10)
+
+        self.retry = 0
+        glob.active_playlist["data"]["live_categories"] = []
+        glob.active_playlist["data"]["vod_categories"] = []
+        glob.active_playlist["data"]["series_categories"] = []
+
+        if hasConcurrent or hasMultiprocessing:
+            if hasConcurrent:
+                try:
+                    from concurrent.futures import ThreadPoolExecutor
+                    with ThreadPoolExecutor(max_workers=threads) as executor:
+                        results = list(executor.map(self.download_url, self.url_list))
+                except Exception as e:
+                    print("Concurrent execution error:", e)
+
+            elif hasMultiprocessing:
+                try:
+                    from multiprocessing.pool import ThreadPool
+                    pool = ThreadPool(threads)
+                    results = pool.imap_unordered(self.download_url, self.url_list)
+                    pool.close()
+                    pool.join()
+                except Exception as e:
+                    print("Multiprocessing execution error:", e)
+
+            for index, response in results:
+                if response:
+                    if index == 0:
+                        if "user_info" in response:
+                            glob.active_playlist.update(response)
+                        else:
+                            glob.active_playlist["user_info"] = {}
+                    if index == 1:
+                        glob.active_playlist["data"]["live_categories"] = response
+                    if index == 2:
+                        glob.active_playlist["data"]["vod_categories"] = response
+                    if index == 3:
+                        glob.active_playlist["data"]["series_categories"] = response
+
+        else:
+            # print("*** trying sequential ***")
+            for url in self.url_list:
+                result = self.download_url(url)
+                index = result[0]
+                response = result[1]
+                if response:
+                    if index == 0:
+                        if "user_info" in response:
+                            glob.active_playlist.update(response)
+                        else:
+                            glob.active_playlist["user_info"] = {}
+                    if index == 1:
+                        glob.active_playlist["data"]["live_categories"] = response
+                    if index == 2:
+                        glob.active_playlist["data"]["vod_categories"] = response
+                    if index == 3:
+                        glob.active_playlist["data"]["series_categories"] = response
+
+        glob.active_playlist["data"]["data_downloaded"] = True
+        glob.active_playlist["data"]["live_streams"] = []
+        self.writeJsonFile()
+
+    def writeJsonFile(self):
+        with open(playlists_json, "r") as f:
+            playlists_all = json.load(f)
+
+        playlists_all[glob.current_selection] = glob.active_playlist
+
+        with open(playlists_json, "w") as f:
+            json.dump(playlists_all, f)
+
     def createSetup(self, data=None):
         # print("*** createSetup ***")
+        self["splash"].hide()
         self["x_title"].setText("")
         self["x_description"].setText("")
+        self["category"].setText("{}".format(glob.current_category))
 
         if self.level == 1:
             self.getCategories()
@@ -339,7 +496,7 @@ class XKlass_Categories(Screen):
         else:
             self.buildList2()
 
-        self.buttons()
+        self.resetButtons()
         self.selectionChanged()
 
     def getCategories(self):
@@ -427,8 +584,6 @@ class XKlass_Categories(Screen):
                 if self.chosen_category == "all" and str(category_id) in glob.active_playlist["player_info"]["livehidden"]:
                     continue
 
-                direct_source = str(channel.get("direct_source", ""))
-
                 bouquet_id1 = int(stream_id) // 65535
                 bouquet_id2 = int(stream_id) - int(bouquet_id1 * 65535)
 
@@ -457,7 +612,7 @@ class XKlass_Categories(Screen):
                     glob.active_playlist["player_info"]["livefavourites"] = []
 
                 self.list2.append([index, str(name), str(stream_id), str(stream_icon), str(epg_channel_id), str(added), str(category_id), str(custom_sid), str(service_ref),
-                                  "", "", "", "", "", "", str(next_url), favourite, False, hidden, str(direct_source)])
+                                  "", "", "", "", "", "", str(next_url), favourite, False, hidden])
 
         glob.originalChannelList2 = self.list2[:]
 
@@ -470,7 +625,7 @@ class XKlass_Categories(Screen):
             http.mount("http://", adapter)
             http.mount("https://", adapter)
 
-            response = http.get(url, headers=hdr, timeout=(10, 30), verify=False)
+            response = http.get(url, headers=hdr, timeout=(10), verify=False)
             response.raise_for_status()
 
             if response.status_code == requests.codes.ok:
@@ -532,22 +687,23 @@ class XKlass_Categories(Screen):
         self.main_list = []
         self.epglist = []
         # index = 0, name = 1, stream_id = 2, stream_icon = 3, epg_channel_id = 4, added = 5, category_id = 6, custom_sid = 7, nowtime = 9
-        # nowTitle = 10, nowDesc = 11, nexttime = 12, nextTitle = 13, nextDesc = 14, next_url = 15, favourite = 16, watching = 17, hidden = 18, direct_source = 19
+        # nowTitle = 10, nowDesc = 11, nexttime = 12, nextTitle = 13, nextDesc = 14, next_url = 15, favourite = 16, watching = 17, hidden = 18
         if self.chosen_category == "favourites":
-            self.main_list = [buildLiveStreamList(x[0], x[1], x[2], x[3], x[15], x[16], x[17], x[18], x[19]) for x in self.list2 if x[16] is True]
-            self.epglist = [buildEPGListEntry(x[0], x[2], x[9], x[10], x[11], x[12], x[13], x[14], x[18], x[19]) for x in self.list2 if x[16] is True]
+            self.main_list = [buildLiveStreamList(x[0], x[1], x[2], x[3], x[15], x[16], x[17], x[18]) for x in self.list2 if x[16] is True]
+            self.epglist = [buildEPGListEntry(x[0], x[2], x[9], x[10], x[11], x[12], x[13], x[14], x[18]) for x in self.list2 if x[16] is True]
         else:
-            self.main_list = [buildLiveStreamList(x[0], x[1], x[2], x[3], x[15], x[16], x[17], x[18], x[19]) for x in self.list2 if x[18] is False]
-            self.epglist = [buildEPGListEntry(x[0], x[2], x[9], x[10], x[11], x[12], x[13], x[14], x[18], x[19]) for x in self.list2 if x[18] is False]
+            self.main_list = [buildLiveStreamList(x[0], x[1], x[2], x[3], x[15], x[16], x[17], x[18]) for x in self.list2 if x[18] is False]
+            self.epglist = [buildEPGListEntry(x[0], x[2], x[9], x[10], x[11], x[12], x[13], x[14], x[18]) for x in self.list2 if x[18] is False]
 
         self["main_list"].setList(self.main_list)
         self["epg_list"].setList(self.epglist)
-        self.showEPG()
+        if self.main_list:
+            self.showEPG()
 
         if self["main_list"].getCurrent() and glob.nextlist[-1]["index"] != 0:
             self["main_list"].setIndex(glob.nextlist[-1]["index"])
 
-    def buttons(self):
+    def resetButtons(self):
         # print("*** buttons ***")
         if glob.nextlist[-1]["filter"]:
             self["key_yellow"].setText("")
@@ -564,6 +720,7 @@ class XKlass_Categories(Screen):
                 glob.nextlist[-1]["sort"] = self.sortText
 
             self["key_yellow"].setText(_(glob.nextlist[-1]["sort"]))
+
             self["key_menu"].setText("+/-")
 
             if self.chosen_category == "favourites" or self.chosen_category == "recent":
@@ -571,15 +728,10 @@ class XKlass_Categories(Screen):
 
     def stopStream(self):
         # print("*** stop stream ***")
-        current_playing_ref = glob.currentPlayingServiceRefString
-        new_playing_ref = glob.newPlayingServiceRefString
 
-        if current_playing_ref and new_playing_ref and current_playing_ref != new_playing_ref:
-            currently_playing_service = self.session.nav.getCurrentlyPlayingServiceReference()
-            if currently_playing_service:
-                self.session.nav.stopService()
-            self.session.nav.playService(eServiceReference(current_playing_ref))
-            glob.newPlayingServiceRefString = current_playing_ref
+        currently_playing_service = self.session.nav.getCurrentlyPlayingServiceReference()
+        if currently_playing_service:
+            self.session.nav.stopService()
 
     def selectionChanged(self):
         # print("*** selectionchanged ***")
@@ -597,12 +749,10 @@ class XKlass_Categories(Screen):
 
             self["page"].setText(_("Page: ") + "{}/{}".format(page, page_all))
             self["listposition"].setText("{}/{}".format(position, position_all))
-            self["main_title"].setText("{}: {}".format(self.main_title, channel_title))
-
+            self["main_title"].setText("{}".format(channel_title))
             self.loadBlankImage()
 
             if self.level == 2:
-
                 if not self.showingshortEPG:
                     self["epg_list"].setIndex(current_index)
 
@@ -611,6 +761,7 @@ class XKlass_Categories(Screen):
                         self.addEPG()
                     else:
                         self.refreshEPGInfo()
+
                     self.timerimage = eTimer()
                     try:
                         self.timerimage.stop()
@@ -766,16 +917,12 @@ class XKlass_Categories(Screen):
 
     def sort(self):
         # print("*** sort ***")
-        if self.selectedlist == self["epg_short_list"]:
-            self.reverse()
-            return
 
         current_sort = self["key_yellow"].getText()
         if not current_sort or current_sort == _("Reverse"):
             return
 
         activelist = self.list1 if self.level == 1 else self.list2
-        activeoriginal = glob.originalChannelList1 if self.level == 1 else glob.originalChannelList2
 
         sortlist = [_("Sort: A-Z"), _("Sort: Z-A")]
         if self.level == 1:
@@ -802,7 +949,7 @@ class XKlass_Categories(Screen):
                 activelist.sort(key=lambda x: x[5], reverse=True)
 
         elif current_sort == _("Sort: Original"):
-            activelist[:] = activeoriginal
+            activelist.sort(key=lambda x: x[0], reverse=False)
 
         next_sort_type = next(islice(cycle(sortlist), self.sortindex + 1, None))
         self.sortText = str(next_sort_type)
@@ -946,14 +1093,15 @@ class XKlass_Categories(Screen):
     def next(self):
         # print("*** next ***")
         if self["main_list"].getCurrent():
-            currentindex = self["main_list"].getIndex()
-            glob.nextlist[-1]["index"] = currentindex
+            current_index = self["main_list"].getIndex()
+            glob.nextlist[-1]["index"] = current_index
             glob.currentchannellist = self.main_list[:]
-            glob.currentchannellistindex = currentindex
+            glob.currentchannellistindex = current_index
             glob.currentepglist = self.epglist[:]
 
             if self.level == 1:
                 if self.list1:
+                    glob.current_category = self["main_list"].getCurrent()[0]
                     category_id = self["main_list"].getCurrent()[3]
 
                     next_url = "{0}&action=get_live_streams&category_id={1}".format(self.player_api, category_id)
@@ -989,66 +1137,20 @@ class XKlass_Categories(Screen):
                     next_url = self["main_list"].getCurrent()[3]
                     stream_id = self["main_list"].getCurrent()[4]
 
-                    try:
-                        direct_source = self["main_list"].getCurrent()[7]
-                    except Exception as e:
-                        print(e)
-                        direct_source = ""
-
                     if str(os.path.splitext(next_url)[-1]) == ".m3u8":
                         if streamtype == "1":
                             streamtype = "4097"
 
                     self.reference = eServiceReference(int(streamtype), 0, next_url)
 
-                    if glob.active_playlist["player_info"]["directsource"] == "Direct Source" and direct_source:
-                        self.reference = eServiceReference(int(streamtype), 0, direct_source)
                     self.reference.setName(glob.currentchannellist[glob.currentchannellistindex][0])
 
-                    if self.session.nav.getCurrentlyPlayingServiceReference():
+                    try:
+                        self.session.nav.stopService()
+                    except:
+                        pass
 
-                        if self.session.nav.getCurrentlyPlayingServiceReference().toString() != self.reference.toString() and cfg.livepreview.value is True:
-                            try:
-                                self.session.nav.stopService()
-                            except:
-                                pass
-
-                            self.session.nav.playService(self.reference)
-
-                            if self.session.nav.getCurrentlyPlayingServiceReference():
-                                glob.newPlayingServiceRef = self.session.nav.getCurrentlyPlayingServiceReference()
-                                glob.newPlayingServiceRefString = glob.newPlayingServiceRef.toString()
-
-                            for channel in self.list2:
-                                if channel[2] == stream_id:
-                                    channel[17] = True  # set watching icon
-                                else:
-                                    channel[17] = False
-
-                            self.buildLists()
-
-                        else:
-                            for channel in self.list2:
-                                if channel[2] == stream_id:
-                                    channel[17] = True  # set watching icon
-                                else:
-                                    channel[17] = False
-
-                            self.buildLists()
-
-                            try:
-                                self.session.nav.stopService()
-                            except:
-                                pass
-
-                            self.session.openWithCallback(self.setIndex, liveplayer.XKlass_StreamPlayer, str(next_url), str(streamtype), str(direct_source), stream_id)
-                    else:
-                        try:
-                            self.session.nav.stopService()
-                        except:
-                            pass
-
-                        self.session.openWithCallback(self.setIndex, liveplayer.XKlass_StreamPlayer, str(next_url), str(streamtype), str(direct_source), stream_id)
+                    self.session.openWithCallback(self.setIndex, liveplayer.XKlass_StreamPlayer, str(next_url), str(streamtype), stream_id)
 
                     self["category_actions"].setEnabled(False)
 
@@ -1075,21 +1177,18 @@ class XKlass_Categories(Screen):
             pass
 
         del glob.nextlist[-1]
+        glob.current_category = None
+        self["category"].setText("")
 
         if not glob.nextlist:
             self.stopStream()
-            self.close()
-        else:
-            # self.lastviewed_url = ""
-            # self.lastviewed_id = ""
-            # self.lastviewed_index = 0
+            self.close(True)
 
+        else:
             self["x_title"].setText("")
             self["x_description"].setText("")
 
-            if cfg.stopstream.value or not cfg.livepreview.value:
-                self.stopStream()
-
+            self.stopStream()
             self.level -= 1
 
             self["category_actions"].setEnabled(True)
@@ -1097,20 +1196,12 @@ class XKlass_Categories(Screen):
 
             self.buildLists()
 
-    def showHiddenList(self):
-        if self["key_menu"].getText() and self["main_list"].getCurrent():
-            from . import hidden
-            current_list = self.prelist + self.list1 if self.level == 1 else self.list2
-            if self.level == 1 or (self.level == 2 and self.chosen_category not in ["favourites", "recents"]):
-                self.xmltvdownloaded = False
-                self.session.openWithCallback(self.createSetup, hidden.XKlass_HiddenCategories, "live", current_list, self.level)
-
     def favourite(self):
         # print("*** favourite ***")
         if not self["main_list"].getCurrent():
             return
 
-        currentindex = self["main_list"].getIndex()
+        current_index = self["main_list"].getIndex()
         favExists = False
         favStream_id = ""
 
@@ -1120,19 +1211,19 @@ class XKlass_Categories(Screen):
                 favStream_id = fav["stream_id"]
                 break
 
-        self.list2[currentindex][16] = not self.list2[currentindex][16]
+        self.list2[current_index][16] = not self.list2[current_index][16]
 
         if favExists:
             glob.active_playlist["player_info"]["livefavourites"] = [x for x in glob.active_playlist["player_info"]["livefavourites"] if str(x["stream_id"]) != str(favStream_id)]
         else:
             newfavourite = {
-                "name": self.list2[currentindex][1],
-                "stream_id": self.list2[currentindex][2],
-                "stream_icon": self.list2[currentindex][3],
-                "epg_channel_id": self.list2[currentindex][4],
-                "added": self.list2[currentindex][5],
-                "category_id": self.list2[currentindex][6],
-                "custom_sid": self.list2[currentindex][7]
+                "name": self.list2[current_index][1],
+                "stream_id": self.list2[current_index][2],
+                "stream_icon": self.list2[current_index][3],
+                "epg_channel_id": self.list2[current_index][4],
+                "added": self.list2[current_index][5],
+                "category_id": self.list2[current_index][6],
+                "custom_sid": self.list2[current_index][7]
             }
 
             glob.active_playlist["player_info"]["livefavourites"].insert(0, newfavourite)
@@ -1157,7 +1248,7 @@ class XKlass_Categories(Screen):
             json.dump(self.playlists_all, f)
 
         if self.chosen_category == "favourites":
-            del self.list2[currentindex]
+            del self.list2[current_index]
 
         self.buildLists()
 
@@ -1241,7 +1332,7 @@ class XKlass_Categories(Screen):
                                 except Exception as e:
                                     print(e)
 
-                    self.epglist = [buildEPGListEntry(x[0], x[1], x[9], x[10], x[11], x[12], x[13], x[14], x[18], x[19]) for x in self.list2 if x[18] is False]
+                    self.epglist = [buildEPGListEntry(x[0], x[1], x[9], x[10], x[11], x[12], x[13], x[14], x[18]) for x in self.list2 if x[18] is False]
                     self["epg_list"].updateList(self.epglist)
 
                     instance = self["epg_list"].master.master.instance
@@ -1452,7 +1543,7 @@ class XKlass_Categories(Screen):
     def downloadStream(self, limitEvent=True):
         # print("*** downloadstream ***")
         from . import record
-        currentindex = self["main_list"].getIndex()
+        current_index = self["main_list"].getIndex()
 
         begin = int(time.time())
         end = begin + 3600
@@ -1460,28 +1551,28 @@ class XKlass_Categories(Screen):
         self.date = time.time()
 
         # recording name - programme title = fallback channel name
-        if self.epglist[currentindex][3]:
-            name = self.epglist[currentindex][3]
+        if self.epglist[current_index][3]:
+            name = self.epglist[current_index][3]
         else:
-            name = self.epglist[currentindex][0]
+            name = self.epglist[current_index][0]
 
-        if self.epglist[currentindex][5]:  # end time
-            end_dt = datetime.strptime(str(self.epglist[currentindex][5]), "%H:%M")
+        if self.epglist[current_index][5]:  # end time
+            end_dt = datetime.strptime(str(self.epglist[current_index][5]), "%H:%M")
             end_dt = end_dt.replace(year=dt_now.year, month=dt_now.month, day=dt_now.day)
             end = int(time.mktime(end_dt.timetuple()))
 
         if self.showingshortEPG:
-            currentindex = self["epg_short_list"].getIndex()
+            current_index = self["epg_short_list"].getIndex()
 
-            if self.epgshortlist[currentindex][1]:
-                shortdate_dt = datetime.strptime(self.epgshortlist[currentindex][1], "%a %d/%m")
+            if self.epgshortlist[current_index][1]:
+                shortdate_dt = datetime.strptime(self.epgshortlist[current_index][1], "%a %d/%m")
                 shortdate_dt = shortdate_dt.replace(year=dt_now.year)
                 self.date = int(time.mktime(shortdate_dt.timetuple()))
 
-            if self.epgshortlist[currentindex][2]:
+            if self.epgshortlist[current_index][2]:
 
-                beginstring = self.epgshortlist[currentindex][2].partition(" - ")[0]
-                endstring = self.epgshortlist[currentindex][2].partition(" - ")[-1]
+                beginstring = self.epgshortlist[current_index][2].partition(" - ")[0]
+                endstring = self.epgshortlist[current_index][2].partition(" - ")[-1]
 
                 shortbegin_dt = datetime.strptime(beginstring, "%H:%M")
                 shortbegin_dt = shortbegin_dt.replace(year=dt_now.year, month=shortdate_dt.month, day=shortdate_dt.day)
@@ -1491,8 +1582,8 @@ class XKlass_Categories(Screen):
                 shortend_dt = shortend_dt.replace(year=dt_now.year, month=shortdate_dt.month, day=shortdate_dt.day)
                 end = int(time.mktime(shortend_dt.timetuple()))
 
-            if self.epgshortlist[currentindex][0]:
-                name = self.epgshortlist[currentindex][0]
+            if self.epgshortlist[current_index][0]:
+                name = self.epgshortlist[current_index][0]
 
         self.name = NoSave(ConfigText(default=name, fixed_size=False))
         self.starttime = NoSave(ConfigClock(default=begin))
@@ -1507,19 +1598,18 @@ class XKlass_Categories(Screen):
             end = data[2]
             name = data[3]
 
-            currentindex = self["main_list"].getIndex()
+            current_index = self["main_list"].getIndex()
             description = ""
             streamurl = self["main_list"].getCurrent()[3]
-            direct_source = self["main_list"].getCurrent()[7]
             streamtype = 1
 
-            if self.epglist[currentindex][4]:
-                description = self.epglist[currentindex][4]
+            if self.epglist[current_index][4]:
+                description = self.epglist[current_index][4]
 
             if self.showingshortEPG:
-                currentindex = self["epg_short_list"].getIndex()
-                if self.epgshortlist[currentindex][3]:
-                    description = str(self.epgshortlist[currentindex][3])
+                current_index = self["epg_short_list"].getIndex()
+                if self.epgshortlist[current_index][3]:
+                    description = str(self.epgshortlist[current_index][3])
 
             eventid = int(streamurl.rpartition("/")[-1].partition(".")[0])
 
@@ -1527,9 +1617,6 @@ class XKlass_Categories(Screen):
                 streamtype = 4097
 
             self.reference = eServiceReference(streamtype, 0, streamurl)
-            if glob.active_playlist["player_info"]["directsource"] == "Direct Source":
-                if direct_source:
-                    self.reference = eServiceReference(streamtype, 0, direct_source)
 
             # switch channel to prevent multi active users
             if self.session.nav.getCurrentlyPlayingServiceReference().toString() != self.reference.toString():
@@ -1712,48 +1799,43 @@ class XKlass_Categories(Screen):
         self.epgtimeshift = 0
         self.addEPG()
 
-    def showChoiceBoxDialog(self):
-        self["dialogactions"].setEnabled(True)
+    def showChoiceBoxDialog(self, Answer=None):
         self["channel_actions"].setEnabled(False)
         self["category_actions"].setEnabled(False)
-
-        instance = self["main_list"].master.master.instance
-        instance.allowNativeKeys(False)
+        glob.ChoiceBoxDialog['dialogactions'].execBegin()
         glob.ChoiceBoxDialog.show()
+        self["menu_actions"].setEnabled(True)
 
-    def closeChoiceBoxDialog(self):
-        print("*** close dialog ***")
-        self["dialogactions"].setEnabled(False)
-        print("*** glob.ChoiceBoxDialog ***", glob.ChoiceBoxDialog.reload)
-        self.session.deleteDialog(glob.ChoiceBoxDialog)
+    def closeChoiceBoxDialog(self, Answer=None):
+        if glob.ChoiceBoxDialog:
+            self["menu_actions"].setEnabled(False)
+            glob.ChoiceBoxDialog.hide()
+            glob.ChoiceBoxDialog['dialogactions'].execEnd()
+            self.session.deleteDialog(glob.ChoiceBoxDialog)
+
         if self.level == 1:
             self["category_actions"].setEnabled(True)
         if self.level == 2:
             self["channel_actions"].setEnabled(True)
-        instance = self["main_list"].master.master.instance
-        instance.allowNativeKeys(True)
 
     def showPopupMenu(self):
         from . import channelmenu
+        glob.current_list = self.prelist + self.list1 if self.level == 1 else self.list2
+        glob.current_level = self.level
+        glob.current_screen = "live"
+        if self.level == 1 or (self.level == 2 and self.chosen_category not in ["favourites", "recents"]):
+            glob.current_list = self.prelist + self.list1 if self.level == 1 else self.list2
+            glob.current_level = self.level
+            glob.current_screen = "live"
+        else:
+            glob.current_list = ""
+
         glob.ChoiceBoxDialog = self.session.instantiateDialog(channelmenu.XKlass_ChannelMenu)
         self.showChoiceBoxDialog()
 
-    def d_quit(self):
-        self.closeChoiceBoxDialog()
 
-    def d_next(self):
-        glob.ChoiceBoxDialog.__next__()
-        glob.ChoiceBoxDialog.hide()
-
-    def d_up(self):
-        glob.ChoiceBoxDialog.keyUp()
-
-    def d_down(self):
-        glob.ChoiceBoxDialog.keyDown()
-
-
-def buildEPGListEntry(index, title, epgNowTime, epgNowTitle, epgNowDesc, epgNextTime, epgNextTitle, epgNextDesc, hidden, direct_source):
-    return (title, index, epgNowTime, epgNowTitle, epgNowDesc, epgNextTime, epgNextTitle, epgNextDesc, hidden, direct_source)
+def buildEPGListEntry(index, title, epgNowTime, epgNowTitle, epgNowDesc, epgNextTime, epgNextTitle, epgNextDesc, hidden):
+    return (title, index, epgNowTime, epgNowTitle, epgNowDesc, epgNextTime, epgNextTitle, epgNextDesc, hidden)
 
 
 def buildShortEPGListEntry(date_all, time_all, title, description, index, start_datetime, end_datetime):
@@ -1765,10 +1847,10 @@ def buildCategoryList(index, title, category_id, hidden):
     return (title, png, index, category_id, hidden)
 
 
-def buildLiveStreamList(index, name, stream_id, stream_icon, next_url, favourite, watching, hidden, direct_source):
+def buildLiveStreamList(index, name, stream_id, stream_icon, next_url, favourite, watching, hidden):
     png = LoadPixmap(os.path.join(common_path, "play.png"))
     if favourite:
         png = LoadPixmap(os.path.join(common_path, "favourite.png"))
     if watching:
         png = LoadPixmap(os.path.join(common_path, "watching.png"))
-    return (name, png, index, next_url, stream_id, stream_icon, hidden, direct_source)
+    return (name, png, index, next_url, stream_id, stream_icon, hidden)

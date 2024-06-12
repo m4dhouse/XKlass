@@ -1,31 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# Standard library imports
 from __future__ import division
-
-from . import _
-from . import xklass_globals as glob
-from .plugin import skin_directory, playlists_json, hdr, playlist_file, cfg, common_path, version, hasConcurrent, hasMultiprocessing
-from .xStaticText import StaticText
-from . import checkinternet
-
-from Components.ActionMap import ActionMap
-from Components.Pixmap import Pixmap
-from Components.Sources.List import List
-from datetime import datetime
-from enigma import eTimer
-
-from requests.adapters import HTTPAdapter, Retry
-from Screens.MessageBox import MessageBox
-from Screens.Screen import Screen
-from Tools.LoadPixmap import LoadPixmap
 
 import json
 import glob as pythonglob
 import os
 import re
-import requests
 import shutil
+from datetime import datetime
 
 try:
     from http.client import HTTPConnection
@@ -34,7 +18,30 @@ except ImportError:
     from httplib import HTTPConnection
     HTTPConnection.debuglevel = 0
 
+# Third-party imports
+import requests
+from requests.adapters import HTTPAdapter, Retry
+
+# Enigma2 components
+from Components.ActionMap import ActionMap
+from Components.Pixmap import Pixmap
+from Components.Sources.List import List
+from enigma import eTimer
+from Screens.MessageBox import MessageBox
+from Screens.Screen import Screen
+from Tools.LoadPixmap import LoadPixmap
+
+# Local application/library-specific imports
+from . import _
+from . import xklass_globals as glob
+from .plugin import skin_directory, playlists_json, playlist_file, cfg, common_path, version, hasConcurrent, hasMultiprocessing
+from .xStaticText import StaticText
+from . import checkinternet
+
+
 epgimporter = os.path.isdir("/usr/lib/enigma2/python/Plugins/Extensions/EPGImport")
+
+hdr = {'User-Agent': str(cfg.useragent.value)}
 
 
 class XKlass_Playlists(Screen):
@@ -51,6 +58,9 @@ class XKlass_Playlists(Screen):
 
         self.setup_title = _("Select Playlist")
 
+        self.original_current_selection = glob.current_selection
+        self.original_active_playlist = glob.active_playlist
+
         self["key_red"] = StaticText(_("Back"))
         self["key_green"] = StaticText(_("OK"))
         self["key_yellow"] = StaticText(_("Delete"))
@@ -63,16 +73,12 @@ class XKlass_Playlists(Screen):
         self["playlists"].onSelectionChanged.append(self.getCurrentEntry)
         self["splash"] = Pixmap()
         self["splash"].show()
-        self["scroll_up"] = Pixmap()
-        self["scroll_down"] = Pixmap()
-        self["scroll_up"].hide()
-        self["scroll_down"].hide()
 
         self["actions"] = ActionMap(["XKlassActions"], {
             "red": self.quit,
-            "green": self.getStreamTypes,
+            "green": self.closePlaylists,
             "cancel": self.quit,
-            "ok": self.getStreamTypes,
+            "ok": self.closePlaylists,
             "blue": self.openUserInfo,
             "info": self.openUserInfo,
             "yellow": self.deleteServer,
@@ -174,7 +180,7 @@ class XKlass_Playlists(Screen):
 
         if hasConcurrent or hasMultiprocessing:
             if hasConcurrent:
-                print("******* trying concurrent futures ******")
+                # print("******* trying concurrent futures ******")
                 try:
                     from concurrent.futures import ThreadPoolExecutor
                     with ThreadPoolExecutor(max_workers=threads) as executor:
@@ -200,7 +206,7 @@ class XKlass_Playlists(Screen):
                     self.playlists_all[index]["user_info"] = {}
 
         else:
-            print("********** trying sequential download *******")
+            # print("********** trying sequential download *******")
             for url in self.url_list:
                 result = self.download_url(url)
                 index = result[0]
@@ -300,7 +306,7 @@ class XKlass_Playlists(Screen):
         for playlist in self.playlists_all:
             name = playlist["playlist_info"].get("name", playlist["playlist_info"].get("domain", ""))
             url = playlist["playlist_info"].get("host", "")
-            status = _("Server Not Responding")
+            status = _("Error")
 
             active = ""
             activenum = ""
@@ -326,9 +332,9 @@ class XKlass_Playlists(Screen):
                         exp_date = user_info.get("exp_date")
                         if exp_date:
                             try:
-                                expires = _("Expires: ") + datetime.fromtimestamp(int(exp_date)).strftime("%d-%m-%Y")
+                                expires = datetime.fromtimestamp(int(exp_date)).strftime("%d-%m-%Y")
                             except:
-                                expires = _("Expires: ") + "Null"
+                                expires = "Null"
 
                         active = str(_("Active Conn:"))
                         activenum = playlist["user_info"]["active_cons"]
@@ -355,8 +361,15 @@ class XKlass_Playlists(Screen):
         self.drawList = [self.buildListEntry(x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8]) for x in self.list]
         self["playlists"].setList(self.drawList)
 
-        if len(self.list) == 1 and cfg.skipplaylistsscreen.value and "user_info" in self.playlists_all[0] and "status" in self.playlists_all[0]["user_info"] and self.playlists_all[0]["user_info"]["status"] == "Active":
-            self.getStreamTypes()
+        p = 0
+        for playlist in self.playlists_all:
+            if str(playlist["playlist_info"]["name"]) == str(cfg.defaultplaylist.value):
+
+                break
+            p += 1
+
+        if self["playlists"].getCurrent():
+            self["playlists"].setIndex(p)
 
         if fail_count_check:
             self.session.open(MessageBox, _("You have dead playlists that are slowing down loading.\n\nPress Yellow button to soft delete dead playlists"), MessageBox.TYPE_WARNING)
@@ -378,7 +391,7 @@ class XKlass_Playlists(Screen):
                 pixmap = LoadPixmap(cached=True, path=os.path.join(common_path, "led_grey.png"))
             elif status == _("Disabled"):
                 pixmap = LoadPixmap(cached=True, path=os.path.join(common_path, "led_grey.png"))
-            elif status == _("Server Not Responding"):
+            elif status == _("Error"):
                 pixmap = LoadPixmap(cached=True, path=os.path.join(common_path, "led_red.png"))
             elif status == _("Not Authorised"):
                 pixmap = LoadPixmap(cached=True, path=os.path.join(common_path, "led_red.png"))
@@ -386,6 +399,8 @@ class XKlass_Playlists(Screen):
         return (index, str(name), str(url), str(expires), str(status), pixmap, str(active), str(activenum), str(maxc), str(maxnum))
 
     def quit(self, answer=None):
+        glob.current_selection = self.original_current_selection
+        glob.active_playlist = self.original_active_playlist
         self.close()
 
     def deleteServer(self, answer=None):
@@ -433,20 +448,9 @@ class XKlass_Playlists(Screen):
         if self.list:
             glob.current_selection = self["playlists"].getIndex()
             glob.active_playlist = self.playlists_all[glob.current_selection]
-
-            num_playlists = self["playlists"].count()
-            if num_playlists > 5:
-                self["scroll_up"].show()
-                self["scroll_down"].show()
-
-                if glob.current_selection < 5:
-                    self["scroll_up"].hide()
-
-                elif glob.current_selection + 1 > ((self["playlists"].count() // 5) * 5):
-                    self["scroll_down"].hide()
         else:
-            glob.current_selection = 0
-            glob.active_playlist = {}
+            glob.current_selection = self.original_current_selection
+            glob.active_playlist = self.original_active_playlist
 
     def openUserInfo(self):
         from . import serverinfo
@@ -457,24 +461,23 @@ class XKlass_Playlists(Screen):
             if "user_info" in current_playlist and "auth" in current_playlist["user_info"] and str(current_playlist["user_info"]["auth"]) == "1":
                 self.session.open(serverinfo.XKlass_UserInfo)
 
-    def getStreamTypes(self):
-        from . import menu
-        if "user_info" in glob.active_playlist:
-            if "auth" in glob.active_playlist["user_info"]:
-                if glob.active_playlist["user_info"]["auth"] == 1 and glob.active_playlist["user_info"]["status"] == "Active":
-                    self.session.open(menu.XKlass_Menu)
-                    self.checkoneplaylist()
-
-    def checkoneplaylist(self):
-        if len(self.list) == 1 and cfg.skipplaylistsscreen.value is True:
-            self.quit()
+    def closePlaylists(self):
+        if "user_info" in glob.active_playlist and "auth" in glob.active_playlist["user_info"] and glob.active_playlist["user_info"]["auth"] == 1 and glob.active_playlist["user_info"]["status"] == "Active":
+            self.close()
+        else:
+            glob.current_selection = self.original_current_selection
+            glob.active_playlist = self.original_active_playlist
+            self.close()
 
     def epgimportcleanup(self):
         channelfilelist = []
         oldchannelfiles = pythonglob.glob("/etc/epgimport/xklass.*.channels.xml")
 
-        with open(playlists_json, "r") as f:
-            self.playlists_all = json.load(f)
+        try:
+            with open(playlists_json, "r") as f:
+                self.playlists_all = json.load(f)
+        except:
+            self.playlists_all = []
 
         for playlist in self.playlists_all:
             cleanName = re.sub(r'[\<\>\:\"\/\\\|\?\*]', "_", str(playlist["playlist_info"]["name"]))

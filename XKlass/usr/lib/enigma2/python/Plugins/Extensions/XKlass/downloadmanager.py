@@ -6,33 +6,21 @@
 # https://github.com/openatv/enigma2/blob/7.0/lib/python/Components/Task.py
 # https://github.com/openatv/enigma2/blob/7.0/lib/python/Screens/TaskView.py
 # https://forums.openpli.org/topic/52171-cancel-a-single-job-in-jobmanager-taskpy/
+
+# Standard library imports
 from __future__ import division
-
-from . import _
-from .plugin import skin_directory, downloads_json, cfg, pythonVer, hdr, isDreambox
-from .xStaticText import StaticText
-from .Task import job_manager as JobManager
-from .Task import Task, Job
-
-from Components.ActionMap import ActionMap
-from Components.Sources.List import List
-from Screens.MessageBox import MessageBox
-from Screens.Screen import Screen
-from enigma import eTimer, eServiceReference
-from requests.adapters import HTTPAdapter, Retry
-
-try:
-    from urlparse import urlparse
-except:
-    from urllib.parse import urlparse
 
 import json
 import math
 import os
 import re
-import requests
 import subprocess
 import time
+
+try:
+    from urlparse import urlparse
+except:
+    from urllib.parse import urlparse
 
 try:
     from http.client import HTTPConnection
@@ -40,6 +28,28 @@ try:
 except:
     from httplib import HTTPConnection
     HTTPConnection.debuglevel = 0
+
+
+# Third-party imports
+import requests
+from requests.adapters import HTTPAdapter, Retry
+
+
+# Enigma2 components
+from Components.ActionMap import ActionMap
+from Components.Sources.List import List
+from Screens.MessageBox import MessageBox
+from Screens.Screen import Screen
+from enigma import eTimer, eServiceReference
+
+
+# Local application/library-specific imports
+from . import _
+from .plugin import skin_directory, downloads_json, cfg, pythonVer
+from .xStaticText import StaticText
+from .Task import job_manager as JobManager
+from .Task import Task, Job
+
 
 ui = False
 
@@ -55,7 +65,7 @@ def convert_size(size_bytes):
     i = int(math.floor(math.log(size_bytes, 1024)))
     p = math.pow(1024, i)
     s = round(size_bytes / p, 2)
-    return "{:.2f} {}".format(s, size_name[i])
+    return "%s %s" % (s, size_name[i])
 
 
 class downloadJob(Job):
@@ -136,6 +146,9 @@ class downloadTask(Task):
                 print(e)
 
 
+hdr = {'User-Agent': str(cfg.useragent.value)}
+
+
 class XKlass_DownloadManager(Screen):
 
     def __init__(self, session):
@@ -150,6 +163,7 @@ class XKlass_DownloadManager(Screen):
 
         self.list = []
         self.drawList = []
+        self.downloads_all = []
 
         self.progress = 0
         self.timerDisplay = eTimer()
@@ -165,7 +179,7 @@ class XKlass_DownloadManager(Screen):
 
         self["key_red"] = StaticText(_("Back"))
         self["key_green"] = StaticText(_("Download"))
-        self["key_blue"] = StaticText(_("Remove"))
+        self["key_yellow"] = StaticText(_("Remove"))
 
         self["diskspace"] = StaticText()
 
@@ -174,7 +188,7 @@ class XKlass_DownloadManager(Screen):
             "cancel": self.keyCancel,
             "green": self.download,
             "ok": self.download,
-            "blue": self.delete,
+            "yellow": self.delete,
         }, -2)
 
         self.onFirstExecBegin.append(self.start)
@@ -200,15 +214,17 @@ class XKlass_DownloadManager(Screen):
         self.stopDownloads()
 
     def readJsonFile(self):
+        self.downloads_all = []
         if os.path.isfile(downloads_json):
             try:
                 with open(downloads_json, "r") as f:
                     self.downloads_all = json.load(f)
             except Exception as e:
                 print("Error reading JSON file:", e)
+                with open(downloads_json, "w") as f:
+                    json.dump(self.downloads_all, f)
         else:
             print("Downloads JSON file does not exist. Creating...")
-            self.downloads_all = []
             with open(downloads_json, "w") as f:
                 json.dump(self.downloads_all, f)
 
@@ -317,7 +333,7 @@ class XKlass_DownloadManager(Screen):
                 print(e)
                 extension = ""
 
-            filename = filmtitle + extension
+            filename = str(filmtitle) + str(extension)
             shortpath = str(cfg.downloadlocation.value)
             path = os.path.join(cfg.downloadlocation.value, filename)
 
@@ -327,13 +343,13 @@ class XKlass_DownloadManager(Screen):
             if state != "Not Started":
                 if self.session.nav.getCurrentlyPlayingServiceReference():
                     playingstream = self.session.nav.getCurrentlyPlayingServiceReference().toString()
-                    if video_domain and video_domain in playingstream:
+                    if video_domain and str(video_domain) in playingstream:
                         if self.session.nav.getCurrentlyPlayingServiceReference():
                             self.session.nav.stopService()
 
-                cmd = "wget -U 'Enigma2 - XKlass Plugin' -c '{0}' -O '{1}'".format(self.url, os.path.join(shortpath, filename))
-                if "https" in url:
-                    cmd = "wget --no-check-certificate -U 'Enigma2 - XKlass Plugin' -c '{0}' -O '{1}'".format(self.url, os.path.join(shortpath, filename))
+                cmd = "wget -U 'Enigma2 - XKlass Plugin' -c '%s' -O '%s%s'" % (url, shortpath, filename)
+                if "https" in str(url):
+                    cmd = "wget --no-check-certificate -U 'Enigma2 - XKlass Plugin' -c '%s' -O '%s%s'" % (url, shortpath, filename)
 
                 try:
                     JobManager.AddJob(downloadJob(self, cmd, path, filmtitle), onFail=self.fail)
@@ -356,33 +372,39 @@ class XKlass_DownloadManager(Screen):
 
     def sortlist(self):
         order = {"In progress": 0, "Waiting": 1, "Not Started": 2}
-        self.downloads_all.sort(key=lambda x: order.get(x[3], 3))  # Use get() with a default value of 3 for unmatched states
+        self.downloads_all.sort(key=lambda x: order[x[3]])
 
     def getprogress(self):
-        for job in JobManager.getPendingJobs():
-            if "XKlass" in job.cmdline:
-                jobname = str(job.name)
-                for video in self.downloads_all:
-                    title = str(video[1])
-                    if title == jobname:
-                        if job.status == job.NOT_STARTED:
-                            video[3] = "Waiting"
-                        elif job.status == job.IN_PROGRESS:
-                            video[3] = "In progress"
-                        video[4] = job.progress
-                        break
-        self.buildList()
+        jobs = JobManager.getPendingJobs()
+        if len(jobs) >= 1:
+            for job in jobs:
+                if "XKlass" in job.cmdline:
+                    jobname = str(job.name)
+                    for video in self.downloads_all:
+                        title = str(video[1])
+                        if title == jobname:
+                            if job.status == job.NOT_STARTED:
+                                video[3] = "Waiting"
+
+                            elif job.status == job.IN_PROGRESS:
+                                video[3] = "In progress"
+
+                            video[4] = job.progress
+                            self.buildList()
+                            break
 
     def saveJson(self):
         with open(downloads_json, "w") as f:
             json.dump(self.downloads_all, f)
 
     def selectionChanged(self):
-        current_item = self["downloadlist"].getCurrent()
-        if current_item:
-            state = current_item[3]
-            self["key_green"].setText(_("Cancel") if state != _("Not Started") else _("Download"))
-            self["key_blue"].setText("") if state != _("Not Started") else _("Remove")
+        if self["downloadlist"].getCurrent():
+            if self["downloadlist"].getCurrent()[3] != _("Not Started"):
+                self["key_green"].setText(_("Cancel"))
+                self["key_yellow"].setText("")
+            else:
+                self["key_green"].setText(_("Download"))
+                self["key_yellow"].setText(_("Remove"))
 
     def keyCancel(self, answer=None):
         global ui
@@ -391,59 +413,54 @@ class XKlass_DownloadManager(Screen):
         self.close()
 
     def download(self):
-        if not os.path.isdir(cfg.downloadlocation.value) or cfg.downloadlocation.value is None:
-            self.session.open(
-                MessageBox,
-                _("Vod Download folder location does not exist.\n\n" + str(cfg.downloadlocation.value) + _("Please set download folder in Main Settings.")),
-                type=MessageBox.TYPE_WARNING
-            )
+        if not os.path.exists(cfg.downloadlocation.value) or cfg.downloadlocation.value is None:
+            self.session.open(MessageBox, _("Vod Download folder location does not exist.\n\n" + str(cfg.downloadlocation.value) + _("Please set download folder in Main Settings.")), type=MessageBox.TYPE_WARNING)
             return
 
-        current_item = self["downloadlist"].getCurrent()
-        if current_item:
-            self.filmtitle = current_item[1]
-            self.url = current_item[2]
+        if self["downloadlist"].getCurrent():
+
+            self.filmtitle = self["downloadlist"].getCurrent()[1]
+
+            self.url = self["downloadlist"].getCurrent()[2]
 
             try:
                 self.extension = str(os.path.splitext(self.url)[-1])
-            except Exception as e:
-                print(e)
+            except:
                 self.extension = ""
 
-            filename = "{}{}".format(self.filmtitle, self.extension)
-            self.shortpath = str(cfg.downloadlocation.value)
-            self.path = os.path.join(cfg.downloadlocation.value, filename)
+            filename = str(self.filmtitle) + str(self.extension)
+            self.shortpath = str(cfg.downloadlocation.getValue())
+            self.path = os.path.join(cfg.downloadlocation.getValue(), filename)
 
             parsed_uri = urlparse(self.url)
             video_domain = parsed_uri.hostname
 
-            if current_item[3] == _("Not Started"):
+            if self["downloadlist"].getCurrent()[3] == _("Not Started"):
+
                 if self.session.nav.getCurrentlyPlayingServiceReference():
                     playingstream = self.session.nav.getCurrentlyPlayingServiceReference().toString()
-                    if str(video_domain) in playingstream:
-                        self.session.nav.stopService()
 
-                cmd = "wget -U 'Enigma2 - XKlass Plugin' -c '{0}' -O '{1}'".format(self.url, os.path.join(self.shortpath, filename))
+                    if str(video_domain) in playingstream:
+                        # stop iptv
+                        if self.session.nav.getCurrentlyPlayingServiceReference():
+                            self.session.nav.stopService()
+
+                cmd = "wget -U 'Enigma2 - XKlass Plugin' -c '%s' -O '%s%s'" % (self.url, self.shortpath, filename)
 
                 if "https" in str(self.url):
                     checkcmd = "strings $(which wget) | grep no-check-certificate"
                     if pythonVer == 2:
                         result = subprocess.call(checkcmd, shell=True)
                         if result == 0:
-                            cmd = "wget --no-check-certificate -U 'Enigma2 - XKlass Plugin' -c '{0}' -O '{1}'".format(self.url, os.path.join(self.shortpath, filename))
+                            cmd = "wget --no-check-certificate -U 'Enigma2 - XKlass Plugin' -c '%s' -O '%s%s'" % (self.url, self.shortpath, filename)
                         else:
-                            if isDreambox:
-                                self.session.open(MessageBox, _("Please update your wget library to download https lines\n\nopkg update\napt-get -y install wget"), type=MessageBox.TYPE_INFO)
-                            else:
-                                self.session.open(MessageBox, _("Please update your wget library to download https lines\n\nopkg update\nopkg install wget"), type=MessageBox.TYPE_INFO)
-
+                            self.session.open(MessageBox, _("Please update your wget library to download https lines\n\nopkg update\nopkg install wget"), type=MessageBox.TYPE_INFO)
                     else:
                         result = subprocess.run(checkcmd, shell=True)
                         if result.returncode == 0:
-                            if isDreambox:
-                                self.session.open(MessageBox, _("Please update your wget library to download https lines\n\nopkg update\napt-get -y install wget"), type=MessageBox.TYPE_INFO)
-                            else:
-                                self.session.open(MessageBox, _("Please update your wget library to download https lines\n\nopkg update\nopkg install wget"), type=MessageBox.TYPE_INFO)
+                            cmd = "wget --no-check-certificate -U 'Enigma2 - XKlass Plugin' -c '%s' -O '%s%s'" % (self.url, self.shortpath, filename)
+                        else:
+                            self.session.open(MessageBox, _("Please update your wget library to download https lines\n\nopkg update\nopkg install wget"), type=MessageBox.TYPE_INFO)
 
                 try:
                     JobManager.AddJob(downloadJob(self, cmd, self.path, self.filmtitle), onFail=self.fail)
@@ -523,9 +540,12 @@ class XKlass_DownloadManager(Screen):
                 except Exception as e:
                     print(e)
 
-        index_to_delete = next((i for i, video in enumerate(self.downloads_all) if str(video[1]) == str(filmtitle)), None)
-        if index_to_delete is not None:
-            del self.downloads_all[index_to_delete]
+        x = 0
+        for video in self.downloads_all:
+            if str(video[1]) == str(filmtitle):
+                break
+            x += 1
+        del self.downloads_all[x]
 
         if ui:
             self.sortlist()

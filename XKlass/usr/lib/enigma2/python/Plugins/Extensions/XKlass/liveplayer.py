@@ -4,6 +4,7 @@
 from __future__ import absolute_import, print_function
 from __future__ import division
 
+# Standard library imports
 import base64
 import json
 import os
@@ -12,41 +13,10 @@ import time
 from datetime import datetime, timedelta
 from itertools import cycle, islice
 
-from PIL import Image, ImageFile, PngImagePlugin
-from . import _
-from . import xklass_globals as glob
-from .plugin import cfg, common_path, dir_tmp, hdr, playlists_json, pythonVer, screenwidth, skin_directory
-from .xStaticText import StaticText
-
-from Components.ActionMap import ActionMap
-from Components.Label import Label
-from Components.ProgressBar import ProgressBar
-from Components.Pixmap import MultiPixmap, Pixmap
-from Components.ServiceEventTracker import ServiceEventTracker, InfoBarBase
-from Components.config import ConfigClock, ConfigText, NoSave
-from enigma import eTimer, eServiceReference, iPlayableService
-from RecordTimer import RecordTimerEntry
-
-
-from Screens.InfoBarGenerics import InfoBarSeek, InfoBarAudioSelection, InfoBarSummarySupport, InfoBarMoviePlayerSummarySupport, InfoBarSubtitleSupport
-
-
-from Screens.MessageBox import MessageBox
-from Screens.Screen import Screen
-from ServiceReference import ServiceReference
-from Tools.BoundFunction import boundFunction
-
-from twisted.web.client import downloadPage
-
 try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
-
-try:
-    from enigma import eAVSwitch
-except Exception:
-    from enigma import eAVControl as eAVSwitch
 
 try:
     from http.client import HTTPConnection
@@ -55,9 +25,56 @@ except ImportError:
     from httplib import HTTPConnection
     HTTPConnection.debuglevel = 0
 
-
+# Third-party imports
+from PIL import Image, ImageFile, PngImagePlugin
 import requests
 from requests.adapters import HTTPAdapter, Retry
+from twisted.web.client import downloadPage
+
+# https twisted client hack #
+try:
+    from twisted.internet import ssl
+    from twisted.internet._sslverify import ClientTLSOptions
+    sslverify = True
+except:
+    sslverify = False
+
+if sslverify:
+    class SNIFactory(ssl.ClientContextFactory):
+        def __init__(self, hostname=None):
+            self.hostname = hostname
+
+        def getContext(self):
+            ctx = self._contextFactory(self.method)
+            if self.hostname:
+                ClientTLSOptions(self.hostname, ctx)
+            return ctx
+
+# Enigma2 components
+from Components.Label import Label
+from Components.ActionMap import ActionMap
+from Components.ProgressBar import ProgressBar
+from Components.Pixmap import MultiPixmap, Pixmap
+from Components.ServiceEventTracker import ServiceEventTracker, InfoBarBase
+from Components.config import ConfigClock, ConfigText, NoSave
+from enigma import eTimer, eServiceReference, iPlayableService
+from RecordTimer import RecordTimerEntry
+from Screens.InfoBarGenerics import InfoBarSeek, InfoBarAudioSelection, InfoBarSummarySupport, InfoBarMoviePlayerSummarySupport, InfoBarSubtitleSupport
+from Screens.MessageBox import MessageBox
+from Screens.Screen import Screen
+from ServiceReference import ServiceReference
+from Tools.BoundFunction import boundFunction
+
+try:
+    from enigma import eAVSwitch
+except Exception:
+    from enigma import eAVControl as eAVSwitch
+
+# Local application/library-specific imports
+from . import _
+from . import xklass_globals as glob
+from .plugin import cfg, common_path, dir_tmp, playlists_json, pythonVer, screenwidth, skin_directory
+from .xStaticText import StaticText
 
 if cfg.subs.value is True:
     try:
@@ -78,25 +95,6 @@ else:
     class SubsSupportStatus(object):
         def __init__(self, *args, **kwargs):
             pass
-
-# https twisted client hack #
-try:
-    from twisted.internet import ssl
-    from twisted.internet._sslverify import ClientTLSOptions
-    sslverify = True
-except:
-    sslverify = False
-
-if sslverify:
-    class SNIFactory(ssl.ClientContextFactory):
-        def __init__(self, hostname=None):
-            self.hostname = hostname
-
-        def getContext(self):
-            ctx = self._contextFactory(self.method)
-            if self.hostname:
-                ClientTLSOptions(self.hostname, ctx)
-            return ctx
 
 
 # png hack
@@ -193,15 +191,6 @@ class IPTVInfoBarShowHide():
     skipToggleShow = False
 
     def __init__(self):
-        """
-        self["ShowHideActions"] = ActionMap(["InfobarShowHideActions", "OKCancelActions"], {
-            "ok": self.OkPressed,
-            "toggleShow": self.OkPressed,
-            "cancel": self.hide,
-            "hide": self.hide,
-        }, 1)
-        """
-
         self.__event_tracker = ServiceEventTracker(screen=self, eventmap={
             iPlayableService.evStart: self.serviceStarted,
         })
@@ -369,6 +358,8 @@ class IPTVInfoBarPVRState:
 
 skin_path = os.path.join(skin_directory, cfg.skin.value)
 
+hdr = {'User-Agent': str(cfg.useragent.value)}
+
 
 class XKlass_StreamPlayer(
     InfoBarBase,
@@ -383,7 +374,7 @@ class XKlass_StreamPlayer(
 
     ALLOW_SUSPEND = True
 
-    def __init__(self, session, streamurl, servicetype, direct_source=None, stream_id=None):
+    def __init__(self, session, streamurl, servicetype, stream_id=None):
         Screen.__init__(self, session)
         self.session = session
 
@@ -406,7 +397,6 @@ class XKlass_StreamPlayer(
         self.streamurl = streamurl
         self.servicetype = servicetype
         self.originalservicetype = self.servicetype
-        self.direct_source = direct_source
 
         skin = os.path.join(skin_path, "streamplayer.xml")
         with open(skin, "r") as f:
@@ -454,12 +444,12 @@ class XKlass_StreamPlayer(
             "ok": self.OKButton,
         }, -2)
 
-        self.onFirstExecBegin.append(boundFunction(self.playStream, self.servicetype, self.streamurl, self.direct_source))
+        self.onFirstExecBegin.append(boundFunction(self.playStream, self.servicetype, self.streamurl))
 
     def restartStream(self):
         if self.session:
             self.session.nav.stopService()
-            self.playStream(self.servicetype, self.streamurl, self.direct_source)
+            self.playStream(self.servicetype, self.streamurl)
 
     def OKButton(self):
         self.refreshInfobar()
@@ -680,7 +670,7 @@ class XKlass_StreamPlayer(
         with open(playlists_json, "w") as f:
             json.dump(self.playlists_all, f)
 
-    def playStream(self, servicetype, streamurl, direct_source):
+    def playStream(self, servicetype, streamurl):
         self["streamcat"].setText("Live")
         self["streamtype"].setText(str(servicetype))
 
@@ -688,8 +678,6 @@ class XKlass_StreamPlayer(
             self["extension"].setText(str(os.path.splitext(streamurl)[-1]))
         except:
             pass
-
-        streamurl = direct_source if glob.active_playlist["player_info"]["directsource"] == "Direct Source" and direct_source else streamurl
 
         self.reference = eServiceReference(int(servicetype), 0, streamurl)
         self.reference.setName(glob.currentchannellist[glob.currentchannellistindex][0])
@@ -746,6 +734,12 @@ class XKlass_StreamPlayer(
             self.timerCache.stop()
         except:
             pass
+
+        try:
+            self.session.nav.stopService()
+        except:
+            pass
+
         self.close()
 
     def toggleStreamType(self):
@@ -759,7 +753,7 @@ class XKlass_StreamPlayer(
             self.servicetype = int(next(next_stream_type))
         except:
             pass
-        self.playStream(self.servicetype, self.streamurl, self.direct_source)
+        self.playStream(self.servicetype, self.streamurl)
 
     def downloadImage(self):
         self.loadDefaultImage()
@@ -855,8 +849,7 @@ class XKlass_StreamPlayer(
             if glob.currentchannellistindex + 1 > list_length:
                 glob.currentchannellistindex = 0
             self.streamurl = glob.currentchannellist[glob.currentchannellistindex][3]
-            self.direct_source = glob.currentchannellist[glob.currentchannellistindex][7]
-            self.playStream(self.servicetype, self.streamurl, self.direct_source)
+            self.playStream(self.servicetype, self.streamurl)
 
     def prev(self):
         self.servicetype = self.originalservicetype
@@ -868,8 +861,7 @@ class XKlass_StreamPlayer(
                 glob.currentchannellistindex = list_length - 1
 
             self.streamurl = glob.currentchannellist[glob.currentchannellistindex][3]
-            self.direct_source = glob.currentchannellist[glob.currentchannellistindex][7]
-            self.playStream(self.servicetype, self.streamurl, self.direct_source)
+            self.playStream(self.servicetype, self.streamurl)
 
     def nextARfunction(self):
         self.ar_id_player += 1

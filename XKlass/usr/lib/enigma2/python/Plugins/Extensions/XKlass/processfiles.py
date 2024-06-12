@@ -1,15 +1,18 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# Standard library imports
 from collections import OrderedDict
 import json
 import os
 import re
+
 try:
     from urllib.parse import urlparse, parse_qs
 except ImportError:
     from urlparse import urlparse, parse_qs
 
+# Local application/library-specific imports
 from .plugin import playlists_json, playlist_file, cfg
 
 
@@ -88,7 +91,6 @@ def process_files():
         epgoffset = 0
         epgalternative = False
         epgalternativeurl = ""
-        directsource = "Standard"
         customsids = False
         fail_count = 0
 
@@ -168,7 +170,6 @@ def process_files():
                                 "vodrecents": vodrecents,
                                 "vodwatched": vodwatched,
                                 "serieswatched": serieswatched,
-                                "directsource": directsource
                             },
                             "data": {
                                 "live_streams": live_streams,
@@ -245,7 +246,6 @@ def process_files():
                         ("epgoffset", epgoffset),
                         ("epgalternative", epgalternative),
                         ("epgalternativeurl", epgalternativeurl),
-                        ("directsource", directsource),
                     ]),
 
                     "data": {
