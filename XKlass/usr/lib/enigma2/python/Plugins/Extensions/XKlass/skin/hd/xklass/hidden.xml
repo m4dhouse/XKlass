@@ -2,7 +2,7 @@
 	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/hd/xklass/images/background.png" alphatest="off" position="0,0" size="1280,720" zPosition="1"/>
 	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/hd/common/logo.png" position="20,20" size="213,80" alphatest="blend" zPosition="1"/>
 	
-	<widget source="screen_title" render="Label" position="32,108" size="308,40" font="xklassregular;32" foregroundColor="#ffffff" backgroundColor="#0c145a" valign="top" halign="left" noWrap="1" transparent="1" zPosition="2"/>
+	<widget source="screen_title" render="Label" position="32,108" size="308,48" font="xklassregular;32" foregroundColor="#ffffff" backgroundColor="#0c145a" valign="top" halign="left" noWrap="1" transparent="1" zPosition="2"/>
 	
 	<widget source="main_title" render="Label" position="360,20" size="666,28" font="xklassregular;18" foregroundColor="#ffffff" backgroundColor="#751f7a" valign="top" halign="left" noWrap="1" transparent="1" zPosition="3"/>
 	
