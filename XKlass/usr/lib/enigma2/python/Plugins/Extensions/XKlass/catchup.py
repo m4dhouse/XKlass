@@ -134,9 +134,32 @@ class XKlass_Catchup_Categories(Screen):
         # print("*** catchup init ***")
         Screen.__init__(self, session)
         self.session = session
-
         glob.session = session
         glob.categoryname = "catchup"
+        self.callfunc = callfunc
+
+        """
+        print("*** self dialog stack ***", self.session.dialog_stack)
+        if self.callfunc == "menu":
+            print("*** series menu ****", glob.previous_screen)
+            try:
+                glob.previous_screen.close()
+                print("*** success ***")
+            except Exception as e:
+                print(e)
+
+            try:
+                self.session.dialog_stack.pop()
+            except Exception as e:
+                print(e)
+
+            try:
+                self.session.summary_stack.pop()
+            except Exception as e:
+                print(e)
+
+            print("*** self dialog stack ***", self.session.dialog_stack)
+            """
 
         try:
             self.closeChoiceBoxDialog()
@@ -1277,7 +1300,7 @@ class XKlass_Catchup_Categories(Screen):
             glob.current_level = self.level
             glob.current_screen = "catchup"
 
-        glob.ChoiceBoxDialog = self.session.instantiateDialog(channelmenu.XKlass_ChannelMenu)
+        glob.ChoiceBoxDialog = self.session.instantiateDialog(channelmenu.XKlass_ChannelMenu, "catchup", self)
         self.showChoiceBoxDialog()
 
 

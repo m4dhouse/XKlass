@@ -32,9 +32,11 @@ class XKlass_ChannelMenu(Screen):
 
     instance = None
 
-    def __init__(self, session):
+    def __init__(self, session, callfunc, previous_screen):
         Screen.__init__(self, session)
         self.session = session
+        self.callfunc = callfunc
+        self.previous_screen = previous_screen
 
         skin_path = os.path.join(skin_directory, cfg.skin.value)
 
@@ -101,15 +103,17 @@ class XKlass_ChannelMenu(Screen):
         self["provider"].setText(self.provider)
 
         self.list = []
-        if glob.active_playlist["player_info"]["showlive"]:
+        """
+        if glob.active_playlist["player_info"]["showlive"] and self.callfunc != "live":
             self.list.append([1, _("Live")])
-        if glob.active_playlist["player_info"]["showvod"]:
+        if glob.active_playlist["player_info"]["showvod"] and self.callfunc != "vod":
             self.list.append([2, _("Vod")])
-        if glob.active_playlist["player_info"]["showseries"]:
+        if glob.active_playlist["player_info"]["showseries"] and self.callfunc != "series":
             self.list.append([3, _("Series")])
-        if glob.active_playlist["player_info"]["showcatchup"]:
+        if glob.active_playlist["player_info"]["showcatchup"] and self.callfunc != "catchup":
             self.list.append([4, _("Catchup")])
-        if glob.active_playlist["player_info"]["showlive"]:
+            """
+        if glob.active_playlist["player_info"]["showlive"] and self.callfunc == "live":
             self.list.append([5, _("Manual EPG Update")])
         self.list.append([6, _("Playlist Settings")])
         if glob.current_list:
@@ -144,6 +148,7 @@ class XKlass_ChannelMenu(Screen):
             if choice == "":
                 pass
 
+            """
             if choice == _("Live"):
                 self.showLive()
             if choice == _("Vod"):
@@ -152,6 +157,7 @@ class XKlass_ChannelMenu(Screen):
                 self.showSeries()
             if choice == _("Catchup"):
                 self.showCatchup()
+                """
             if choice == _("Manual EPG Update"):
                 self.manualEPGUpdate()
             if choice == _("Playlist Settings"):
@@ -171,25 +177,34 @@ class XKlass_ChannelMenu(Screen):
             if choice == _("Global Settings"):
                 self.mainSettings()
 
+    """
     def showLive(self):
-        self.closeDialog()
-        from . import live
-        self.session.open(live.XKlass_Live_Categories, "menu")
+        glob.previous_screen = self.previous_screen
+        self.exitDialog()
+
+        # from . import live
+        # self.session.open(live.XKlass_Live_Categories, "menu")
 
     def showVod(self):
-        self.closeDialog()
-        from . import vod
-        self.session.open(vod.XKlass_Vod_Categories, "menu")
+        glob.previous_screen = self.previous_screen
+        self.exitDialog()
+        return "vod"
+        # from . import vod
+        # self.session.open(vod.XKlass_Vod_Categories, "menu")
 
     def showSeries(self):
-        self.closeDialog()
-        from . import series
-        self.session.open(series.XKlass_Series_Categories, "menu")
+        glob.previous_screen = self.previous_screen
+        self.exitDialog()
+        return "series"
+        # from . import series
+        # self.session.open(series.XKlass_Series_Categories, "menu")
 
     def showCatchup(self):
-        self.closeDialog()
-        from . import catchup
-        self.session.open(catchup.XKlass_Catchup_Categories, "menu")
+        glob.previous_screen = self.previous_screen
+        self.exitDialog()
+        # from . import catchup
+        # self.session.open(catchup.XKlass_Catchup_Categories, "menu")
+        """
 
     def manualEPGUpdate(self):
         self.closeDialog()
@@ -220,9 +235,9 @@ class XKlass_ChannelMenu(Screen):
         self.session.openWithCallback(self.callback, playsettings.XKlass_Settings)
 
     def showHidden(self):
-        self.exitDialog()
+        self.closeDialog()
         from . import hidden
-        self.session.open(hidden.XKlass_HiddenCategories, glob.current_screen, glob.current_list, glob.current_level)
+        self.session.openWithCallback(self.callback, hidden.XKlass_HiddenCategories, glob.current_screen, glob.current_list, glob.current_level)
 
     def userInfo(self):
         self.closeDialog()

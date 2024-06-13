@@ -98,8 +98,32 @@ class XKlass_Vod_Categories(Screen):
         Screen.__init__(self, session)
         self.session = session
         glob.session = session
-
         glob.categoryname = "vod"
+        self.callfunc = callfunc
+
+        """
+        print("*** self dialog stack ***", self.session.dialog_stack)
+        if self.callfunc == "menu":
+            print("*** vod menu ****", glob.previous_screen)
+            try:
+                glob.previous_screen.close()
+                print("*** success ***")
+            except Exception as e:
+                print(e)
+
+            try:
+                self.session.dialog_stack.pop()
+            except Exception as e:
+                print(e)
+
+            try:
+                self.session.summary_stack.pop()
+            except Exception as e:
+                print(e)
+
+            print("*** self dialog stack ***", self.session.dialog_stack)
+            """
+
         contextFactory = BrowserLikePolicyForHTTPS()
         self.agent = Agent(reactor, contextFactory=contextFactory)
         self.cover_download_deferred = None
@@ -2012,6 +2036,7 @@ class XKlass_Vod_Categories(Screen):
         return res
 
     def showChoiceBoxDialog(self, Answer=None):
+        # print("*** showChoiceBoxDialog ***")
         self["channel_actions"].setEnabled(False)
         self["category_actions"].setEnabled(False)
         glob.ChoiceBoxDialog['dialogactions'].execBegin()
@@ -2019,6 +2044,7 @@ class XKlass_Vod_Categories(Screen):
         self["menu_actions"].setEnabled(True)
 
     def closeChoiceBoxDialog(self, Answer=None):
+        # print("*** closeChoiceBoxDialog ***")
         if glob.ChoiceBoxDialog:
             self["menu_actions"].setEnabled(False)
             glob.ChoiceBoxDialog.hide()
@@ -2031,6 +2057,7 @@ class XKlass_Vod_Categories(Screen):
             self["channel_actions"].setEnabled(True)
 
     def showPopupMenu(self):
+        # print("*** showPopupMenu ***")
         from . import channelmenu
         glob.current_list = self.prelist + self.list1 if self.level == 1 else self.list2
         glob.current_level = self.level
@@ -2042,7 +2069,7 @@ class XKlass_Vod_Categories(Screen):
         else:
             glob.current_list = ""
 
-        glob.ChoiceBoxDialog = self.session.instantiateDialog(channelmenu.XKlass_ChannelMenu)
+        glob.ChoiceBoxDialog = self.session.instantiateDialog(channelmenu.XKlass_ChannelMenu, "vod", self)
         self.showChoiceBoxDialog()
 
 

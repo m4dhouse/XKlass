@@ -84,8 +84,8 @@ class XKlass_MainMenu(Screen):
         except:
             pass
 
-        self.dialogstack = self.session.dialog_stack
-        self.summarystack = self.session.summary_stack
+        # self.dialogstack = self.session.dialog_stack
+        # self.summarystack = self.session.summary_stack
 
         if self.playlists_all:
             if self.defaultplaylist:
@@ -148,9 +148,9 @@ class XKlass_MainMenu(Screen):
         self.start()
 
     def check_dependencies(self):
-        print("*** self.session.summary ***", self.session.summary)
-        print("**** self.session.dialog_stack ***", self.session.dialog_stack)
-        print("**** self.session.summary_stack ***", self.session.summary_stack)
+        # print("*** self.session.summary ***", self.session.summary)
+        # print("**** self.session.dialog_stack ***", self.session.dialog_stack)
+        # print("**** self.session.summary_stack ***", self.session.summary_stack)
         try:
             if cfg.location_valid.value is False:
                 self.session.open(MessageBox, _("Playlists.txt location is invalid and has been reset."), type=MessageBox.TYPE_INFO, timeout=5)
