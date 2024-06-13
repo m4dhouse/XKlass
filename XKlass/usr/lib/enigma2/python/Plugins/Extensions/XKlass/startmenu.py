@@ -65,8 +65,8 @@ class XKlass_MainMenu(Screen):
             "ok": self.__next__,
             "menu": self.__next__,
             "cancel": self.quit,
-            "left": self["list"].up,
-            "right": self["list"].down,
+            "left": self.goUp,
+            "right": self.goDown,
         }, -2)
 
         self["version"].setText(version)
@@ -126,6 +126,14 @@ class XKlass_MainMenu(Screen):
 
     def __layoutFinished(self):
         self.setTitle(self.setup_title)
+
+    def goUp(self):
+        instance = self["list"].master.master.instance
+        instance.moveSelection(instance.moveUp)
+
+    def goDown(self):
+        instance = self["list"].master.master.instance
+        instance.moveSelection(instance.moveDown)
 
     def refreshVariables(self):
         try:

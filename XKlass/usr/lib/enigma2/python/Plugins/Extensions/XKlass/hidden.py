@@ -61,12 +61,12 @@ class XKlass_HiddenCategories(Screen, ProtectedScreen):
         self.channellist = channellist
         self.level = level
 
-        self.setup_title = _("Hidden Categories1")
+        self.setup_title = _("Hidden Categories")
 
-        self.main_title = _("Hidden Categories2")
+        self.main_title = _("Hidden Categories")
         self["main_title"] = StaticText(self.main_title)
 
-        self.screen_title = _("Hidden Categories3")
+        self.screen_title = _("Hidden Categories")
         self["screen_title"] = StaticText(self.screen_title)
 
         self.startList = []

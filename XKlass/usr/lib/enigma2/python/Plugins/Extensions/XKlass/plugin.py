@@ -161,7 +161,7 @@ cfg.infobarcovers = ConfigYesNo(default=True)
 cfg.introvideo = ConfigYesNo(default=True)
 
 cfg.boot = ConfigYesNo(default=False)
-cfg.useragent = ConfigSelection(default="Enigma2 - XStreamity Plugin", choices=useragents)
+cfg.useragent = ConfigSelection(default="Enigma2 - XKlass Plugin", choices=useragents)
 cfg.defaultplaylist = ConfigText()
 cfg.lastcategory = ConfigText()
 
