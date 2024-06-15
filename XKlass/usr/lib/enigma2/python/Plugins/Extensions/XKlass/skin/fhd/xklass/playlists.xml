@@ -1,5 +1,5 @@
 <screen name="XKlassPlaylists" position="0,0" size="1920,1080" backgroundColor="#0c145a" flags="wfNoBorder">
-	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/fhd/xklass/images/background.png" alphatest="on" position="0,0" size="1920,1080" zPosition="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/fhd/xklass/images/background.png" alphatest="off" position="0,0" size="1920,1080" zPosition="1"/>
 	<widget name="splash" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/fhd/xklass/images/splash.png" alphatest="on" position="0,0" size="1920,1080" zPosition="1000"/>
 	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/fhd/common/logo.png" position="75,60" size="320,120" alphatest="blend" zPosition="1"/>
 	<widget source="Title" render="Label" position="90,267" size="480,72" font="xklassregular;48" foregroundColor="#ffffff" backgroundColor="#0c145a" valign="center" halign="left" noWrap="1" transparent="1" zPosition="2"/>

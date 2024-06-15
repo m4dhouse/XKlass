@@ -1,5 +1,5 @@
 <screen name="XKlassVod" position="0,0" size="2560,1440" backgroundColor="#0c145a" flags="wfNoBorder">
-	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/background.png" alphatest="on" position="0,0" size="2560,1440" zPosition="1"/>
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/background.png" alphatest="off" position="0,0" size="2560,1440" zPosition="1"/>
 	<widget name="vod_backdrop" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/backdrop.png" position="854,0" size="1707,960" alphatest="on" zPosition="2"/>
 	<widget name="splash" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/splash.png" alphatest="on" position="0,0" size="2560,1440" zPosition="1000"/>
 	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/logo.png" position="40,40" size="427,160" alphatest="blend" zPosition="1"/>
