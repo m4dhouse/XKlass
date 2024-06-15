@@ -281,20 +281,20 @@ class XKlass_Series_Categories(Screen):
         try:
             self.coverLoad.PictureData.get().append(self.DecodeCover)
         except:
-            self.coverLoad_conn = self.PicLoad.PictureData.connect(self.DecodeCover)
+            self.coverLoad_conn = self.coverLoad.PictureData.connect(self.DecodeCover)
 
         """
         self.backdropLoad = ePicLoad()
         try:
             self.backdropLoad.PictureData.get().append(self.DecodeBackdrop)
         except:
-            self.backdropLoad_conn = self.PicLoad.PictureData.connect(self.DecodeBackdrop)
+            self.backdropLoad_conn = self.backdropLoad.PictureData.connect(self.DecodeBackdrop)
 
         self.logoLoad = ePicLoad()
         try:
             self.logoLoad.PictureData.get().append(self.DecodeLogo)
         except:
-            self.logoLoad_conn = self.PicLoad.PictureData.connect(self.DecodeLogo)
+            self.logoLoad_conn = self.logoLoad.PictureData.connect(self.DecodeLogo)
             """
 
         if self.selectionChanged not in self["main_list"].onSelectionChanged:
