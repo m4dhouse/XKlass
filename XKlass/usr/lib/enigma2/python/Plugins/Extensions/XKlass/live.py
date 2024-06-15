@@ -232,6 +232,7 @@ class XKlass_Live_Categories(Screen):
 
         self.epgtimeshift = 0
         self.level = 1
+        glob.current_level = 1
 
         self.selectedlist = self["main_list"]
 
@@ -319,6 +320,7 @@ class XKlass_Live_Categories(Screen):
         self.setTitle(self.setup_title)
 
     def initGlobals(self):
+        print("*** initglobals ***")
         self.host = glob.active_playlist["playlist_info"]["host"]
         self.username = glob.active_playlist["playlist_info"]["username"]
         self.password = glob.active_playlist["playlist_info"]["password"]
@@ -347,8 +349,12 @@ class XKlass_Live_Categories(Screen):
             glob.nextlist = []
             glob.nextlist.append({"next_url": next_url, "index": 0, "level": self.level, "sort": self.sortText, "filter": ""})
 
+
     def refresh(self):
+        print("*** refresh ***")
+        self.level = glob.current_level
         if self.original_active_playlist != glob.active_playlist:
+            print("*** different playlist ***")
             if self.level == 1:
                 self.reset()
             if self.level == 2:
@@ -1189,6 +1195,12 @@ class XKlass_Live_Categories(Screen):
 
     def back(self, data=None):
         # print("*** back ***")
+
+        try:
+            self.closeChoiceBoxDialog()
+        except Exception as e:
+            print(e)
+
         if self.selectedlist == self["epg_short_list"]:
             self.shortEPG()
             return
@@ -1204,7 +1216,8 @@ class XKlass_Live_Categories(Screen):
 
         if not glob.nextlist:
             self.stopStream()
-            self.close(True)
+
+            self.close()
 
         else:
             self["x_title"].setText("")

@@ -161,11 +161,6 @@ class XKlass_Catchup_Categories(Screen):
             print("*** self dialog stack ***", self.session.dialog_stack)
             """
 
-        try:
-            self.closeChoiceBoxDialog()
-        except Exception as e:
-            print(e)
-
         self.skin_path = os.path.join(skin_directory, cfg.skin.value)
         skin = os.path.join(self.skin_path, "live_categories.xml")
         if os.path.exists("/var/lib/dpkg/status"):
@@ -222,6 +217,7 @@ class XKlass_Catchup_Categories(Screen):
         self.sortText = _("Sort: A-Z")
 
         self.level = 1
+        glob.current_level = 1
 
         self.selectedlist = self["main_list"]
 
@@ -284,6 +280,11 @@ class XKlass_Catchup_Categories(Screen):
         self["splash"] = Pixmap()
         self["splash"].show()
 
+        try:
+            self.closeChoiceBoxDialog()
+        except Exception as e:
+            print(e)
+
         self.initGlobals()
 
         self.onLayoutFinish.append(self.__layoutFinished)
@@ -313,6 +314,7 @@ class XKlass_Catchup_Categories(Screen):
             glob.nextlist.append({"next_url": next_url, "index": 0, "level": self.level, "sort": self.sortText, "filter": ""})
 
     def refresh(self):
+        self.level = glob.current_level
         if self.original_active_playlist != glob.active_playlist:
             if self.level == 1:
                 self.reset()
@@ -1004,6 +1006,12 @@ class XKlass_Catchup_Categories(Screen):
 
     def back(self, data=None):
         # print("*** back ***")
+
+        try:
+            self.closeChoiceBoxDialog()
+        except Exception as e:
+            print(e)
+
         self.hideEPG()
 
         if self.selectedlist == self["epg_short_list"]:
@@ -1021,6 +1029,7 @@ class XKlass_Catchup_Categories(Screen):
 
             if not glob.nextlist:
                 self.stopStream()
+
                 self.close()
             else:
                 self["x_title"].setText("")
