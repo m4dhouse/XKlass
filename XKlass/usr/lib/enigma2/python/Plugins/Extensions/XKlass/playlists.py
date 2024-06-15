@@ -53,6 +53,9 @@ class XKlass_Playlists(Screen):
 
         skin_path = os.path.join(skin_directory, cfg.skin.value)
         skin = os.path.join(skin_path, "playlists.xml")
+        if os.path.exists("/var/lib/dpkg/status"):
+            skin = os.path.join(skin_path, "DreamOS/playlists.xml")
+
         with open(skin, "r") as f:
             self.skin = f.read()
 
