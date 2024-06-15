@@ -1,17 +1,17 @@
-<screen name="XKlassMenu" position="0,0" size="2560,1440" backgroundColor="#0d155f" flags="wfNoBorder">
-	<widget source="session.VideoPicture" render="Pig" position="0,0" size="2560,1440" backgroundColor="#ff000000" zPosition="-1"/>
-	<widget source="background" render="Pixmap" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/background.png" alphatest="off" position="0,0" size="2560,1440" zPosition="1">
+<screen name="XKlassMenu" position="0,0" size="1920,1080" backgroundColor="#0d155f" flags="wfNoBorder">
+	<widget source="session.VideoPicture" render="Pig" position="0,0" size="1920,1080" backgroundColor="#ff000000" zPosition="-1"/>
+	<widget source="background" render="Pixmap" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/background.png" alphatest="off" position="0,0" size="1920,1080" zPosition="1">
 		<convert type="ConditionalShowHide"/>
 	</widget>
 	<!-- logo large -->
-	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/logo-large.png" alphatest="blend" position="759,502" size="1042,438" zPosition="2"/>
-	<widget source="version" render="Label" position="1027, 840" size="680,36" font="xklassregular;24" foregroundColor="#ffffff" backgroundColor="#091153" halign="center" valign="center" transparent="1" zPosition="2"/>
-	<widget source="list" render="Listbox" position="center,1120" size="1600,160" foregroundColor="#ffffff" backgroundColor="#0b0f59" foregroundColorSelected="#ffffff" backgroundColorSelected="#0b0f59" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/menu-selected.png" backgroundPixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/blank.png" enableWrapAround="1" transparent="1" zPosition="2">
+	<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/logo-large.png" alphatest="blend" position="569,376" size="781,328" zPosition="2"/>
+	<widget source="version" render="Label" position="770, 630" size="510,27" font="xklassregular;18" foregroundColor="#ffffff" backgroundColor="#091153" halign="center" valign="center" transparent="1" zPosition="2"/>
+	<widget source="list" render="Listbox" position="center,840" size="1200,120" foregroundColor="#ffffff" backgroundColor="#0b0f59" foregroundColorSelected="#ffffff" backgroundColorSelected="#0b0f59" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/xklass/images/menu-selected.png" backgroundPixmap="/usr/lib/enigma2/python/Plugins/Extensions/XKlass/skin/uhd/common/blank.png" enableWrapAround="1" transparent="1" zPosition="2">
 		<convert type="TemplatedMultiContent">{"template": [
-			MultiContentEntryText(pos=(0, 0), size=(1600, 160), font=0, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_CENTER|RT_VALIGN_TOP, text = 1),
+			MultiContentEntryText(pos=(0, 0), size=(1200, 120), font=0, color = 0x00ffffff, color_sel = 0x00ffffff, backcolor_sel = None, flags = RT_HALIGN_CENTER|RT_VALIGN_TOP, text = 1),
 			],
-			"fonts": [gFont("xklassregular", 96)],
-			"itemHeight": 160,
+			"fonts": [gFont("xklassregular", 72)],
+			"itemHeight": 120,
 			"scrollbarMode": "showNever"
 			}</convert>
 	</widget>
